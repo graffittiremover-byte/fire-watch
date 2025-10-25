@@ -5,10 +5,10 @@
   <title>Fire Watch</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- force latest -->
+  <!-- Force newest build each deploy -->
   <script>
   (function () {
-    const APP_VERSION = "2025-10-25-5";
+    const APP_VERSION = "2025-10-25-7";  /* bump on each commit */
     const u = new URL(location.href);
     if (u.searchParams.get("v") !== APP_VERSION) {
       u.searchParams.set("v", APP_VERSION);
@@ -20,6 +20,7 @@
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
 
+  <!-- tiny inline favicon -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50%25' x='50%25' dy='.35em' text-anchor='middle'%3E🔥%3C/text%3E%3C/svg%3E">
 
   <style>
@@ -337,7 +338,7 @@
       render();
     }
 
-    // ------- Global events (ALL browsers) -------
+    /* ------------ GLOBAL EVENTS (DB) --------------- */
     async function fetchEvents(){
       const { data, error } = await sb.from('events')
         .select('*')
@@ -378,8 +379,7 @@
       const { error } = await sb.from('events').insert(payload);
       if (error) {
         console.error('logEvent insert failed:', error);
-        const badge = document.getElementById('eventsError');
-        if (badge) badge.style.display = 'inline-block';
+        document.getElementById('eventsError').style.display = 'inline-block';
       }
     }
     function subscribeEvents(){
@@ -389,7 +389,7 @@
         }).subscribe();
     }
 
-    // ------- Fire watch (current) -------
+    /* ----------- FIRE WATCH (CURRENT) ------------- */
     async function fetchCurrent(){
       const { data, error } = await sb.from('fire_watches')
         .select('*').in('status',['PENDING_ACK','ACTIVE'])
@@ -408,7 +408,7 @@
         }).subscribe();
     }
 
-    // ------- History -------
+    /* ---------------- HISTORY -------------------- */
     function openHistory(){ document.getElementById('dlgHistory').showModal(); loadHistory(); }
     async function loadHistory(){
       const q = (document.getElementById('histSearch').value||'').trim().toLowerCase();
@@ -479,7 +479,7 @@
       const a=document.createElement('a'); a.href=url; a.download=`firewatch_history_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     }
 
-    // ------- Inline handlers -------
+    /* --------------- Inline handlers --------------- */
     function handleLoginOpen(){ document.getElementById('dlgLogin').showModal(); }
     function handleLogout(){ logEvent('sign_out'); setUser(null); }
     function handleDoLogin(){
@@ -569,7 +569,7 @@
       logEvent('end_fire_watch', notes?`notes=${notes}`:'');
     }
 
-    // expose
+    // expose global
     window.handleLoginOpen=handleLoginOpen; window.handleLogout=handleLogout; window.handleDoLogin=handleDoLogin;
     window.handleStart=handleStart; window.handleFDTypeChange=handleFDTypeChange; window.handleDoStartEng=handleDoStartEng;
     window.handleDoStartFD=handleDoStartFD; window.handleAckOpen=handleAckOpen; window.handleDoAck=handleDoAck;
@@ -578,8 +578,8 @@
 
     // init
     (async () => {
-      // try to write a quick marker so we can see if events insert works
-      logEvent('page_open', 'v=2025-10-25-5'); // ignore failure, just a probe
+      // probe write (helps confirm events table accepts inserts)
+      logEvent('page_open', 'v=2025-10-25-7');
 
       const row = await fetchCurrent(); applyRow(row);
       await fetchEvents();
