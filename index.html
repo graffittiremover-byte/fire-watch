@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Fire Watch – Preview</title>
+  <title>Fire Watch</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root{ --bg:#0f172a; --card:#111827; --muted:#1f2937;
@@ -55,7 +55,7 @@
     <!-- Header / Status -->
     <section class="card">
       <div class="h">
-        <div class="title">Fire Watch Console (Preview)</div>
+        <div class="title">Fire Watch Console</div>
         <div id="statusPill" class="status">
           <div id="statusDot" class="dot s-idle"></div>
           <div id="statusText">Idle</div>
@@ -112,7 +112,7 @@
           <div class="title">Event Log</div>
           <div class="toolbar">
             <button id="btnExport" class="btn ghost">Export CSV</button>
-            <span class="muted">Preview only</span>
+            <span class="muted">Realtime + DB</span>
           </div>
         </div>
         <div style="overflow:auto; max-height:380px; border:1px solid rgba(148,163,184,.12); border-radius:12px;">
@@ -128,43 +128,33 @@
     </div>
   </main>
 
-  <!-- Supabase FIRST (CDN + config + global client + ping) -->
+  <!-- Supabase FIRST (CDN + config + client + ping) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // Your Supabase creds (anon key; RLS protects writes)
     const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
-
-    // Global client
     window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // Connectivity pill
     (async () => {
-      try {
-        const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
-        document.getElementById('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
-        if (error) console.error('Ping error:', error);
-      } catch (e) {
-        console.error('Ping exception:', e);
-        document.getElementById('backendPill').textContent = 'Backend: script load error';
-      }
+      const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
+      document.getElementById('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
+      if (error) console.error(error);
     })();
   </script>
 
-  <!-- App logic (now runs AFTER Supabase is ready) -->
+  <!-- App logic -->
   <script>
     const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
     const pins = { ENG:'4156', FD:'6666' };
 
     const state = { status:S.IDLE, current:null, user:null, logs:[] };
 
+    // DOM
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
     const userPill = document.getElementById('userPill');
     const panelIdle = document.getElementById('panelIdle');
     const panelPending = document.getElementById('panelPending');
     const panelActive = document.getElementById('panelActive');
-
     const btnLogin = document.getElementById('btnLogin');
     const btnLogout = document.getElementById('btnLogout');
     const btnStart = document.getElementById('btnStart');
@@ -172,13 +162,13 @@
     const btnCancel = document.getElementById('btnCancel');
     const btnEnd = document.getElementById('btnEnd');
     const btnExport = document.getElementById('btnExport');
-
     const pendingBy = document.getElementById('pendingBy');
     const pendingAt = document.getElementById('pendingAt');
     const activeSince = document.getElementById('activeSince');
     const activeBy = document.getElementById('activeBy');
     const activeAck = document.getElementById('activeAck');
 
+    // Modals/inputs
     const dlgLogin = document.getElementById('dlgLogin');
     const loginRole = document.getElementById('loginRole');
     const loginPin = document.getElementById('loginPin');
@@ -206,52 +196,80 @@
     const btnDoEnd = document.getElementById('btnDoEnd');
 
     const logTableBody = document.querySelector('#logTable tbody');
-
     const tz = 'America/Toronto';
     const fmt = ts => new Date(ts).toLocaleString('en-CA',{timeZone:tz});
-    const setStatus = s => {
+
+    function setStatus(s){
       statusDot.className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
       statusText.textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
-    };
-    const requireName = v => v && v.trim().length>=2;
-    const log = (action,details='')=>{
+    }
+    function requireName(v){ return v && v.trim().length>=2; }
+    function log(action,details=''){
       state.logs.unshift({ts:Date.now(),action,role:state.user?.role||'-',name:state.user?.name||'-',details});
-      logTableBody.innerHTML = state.logs.map(l=>`
+      logTableBody.innerHTML = state.logs.map(l => `
         <tr><td>${fmt(l.ts)}</td><td>${l.action}</td><td>${l.role}</td><td>${l.name}</td><td>${l.details||''}</td></tr>
       `).join('');
-    };
-    const setUser = u => {
+    }
+    function setUser(u){
       state.user=u;
       userPill.textContent = u?`${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}`:'Not signed in';
       btnLogin.style.display = u?'none':'inline-block';
       btnLogout.style.display = u?'inline-block':'none';
       render();
-    };
-    const guardOne = ()=>{
-      if(state.status!==S.IDLE){ alert('A Fire Watch is already in progress. End or cancel it first.'); return true; }
-      return false;
-    };
-
+    }
     function render(){
       setStatus(state.status);
       panelIdle.style.display = state.status===S.IDLE?'grid':'none';
       panelPending.style.display = state.status===S.PENDING?'grid':'none';
       panelActive.style.display = state.status===S.ACTIVE?'grid':'none';
 
-      if(state.status===S.PENDING){
-        pendingBy.textContent = `${state.current.startedByRole==='ENG'?'Engineering':'Front Desk'} — ${state.current.startedByName}`;
-        pendingAt.textContent = fmt(state.current.startedAt);
-        const waitingForFD = state.current.startedByRole==='ENG';
-        btnAcknowledge.style.display =
-          (waitingForFD && state.user?.role==='FD') ||
-          (!waitingForFD && state.user?.role==='ENG') ? 'inline-block':'none';
+      if(state.current){
+        if(state.status===S.PENDING){
+          pendingBy.textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
+          pendingAt.textContent = fmt(state.current.started_at || Date.now());
+          const waitingForFD = state.current.started_by_role==='ENG';
+          btnAcknowledge.style.display =
+            (waitingForFD && state.user?.role==='FD') ||
+            (!waitingForFD && state.user?.role==='ENG') ? 'inline-block':'none';
+        }
+        if(state.status===S.ACTIVE){
+          activeSince.textContent = fmt(state.current.started_at || Date.now());
+          activeBy.textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
+          activeAck.textContent = state.current.bypass_used
+            ? `Bypass used (Panel by: ${state.current.panel_by_name || '—'})`
+            : (state.current.fd_ack_by_name ? `Front Desk — ${state.current.fd_ack_by_name}` : '—');
+        }
       }
-      if(state.status===S.ACTIVE){
-        activeSince.textContent = fmt(state.current.startedAt);
-        activeBy.textContent = `${state.current.startedByRole==='ENG'?'Engineering':'Front Desk'} — ${state.current.startedByName}`;
-        activeAck.textContent = state.current.ackByName ? `Front Desk — ${state.current.ackByName}` :
-          state.current.bypassUsed ? `Bypass used (Panel by: ${state.current.panelByName})` : '—';
-      }
+    }
+
+    // ===== DB helpers =====
+    async function fetchCurrent(){
+      const { data, error } = await sb
+        .from('fire_watches')
+        .select('*')
+        .in('status',['PENDING_ACK','ACTIVE'])
+        .order('started_at',{ascending:false})
+        .limit(1);
+      if(error){ console.error('fetchCurrent', error); return null; }
+      return (data && data[0]) || null;
+    }
+
+    function applyRow(row){
+      if(!row){ state.status=S.IDLE; state.current=null; render(); return; }
+      state.current = row;
+      state.status = row.status;
+      render();
+    }
+
+    function subscribeRealtime(){
+      sb.channel('rw_fire_watches')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fire_watches' }, async (payload) => {
+          // whenever anything changes, refresh current session (cheap/simple)
+          const row = await fetchCurrent();
+          applyRow(row);
+          log('sync', `change: ${payload.eventType.toLowerCase()}`);
+        })
+        .subscribe();
     }
 
     // ===== Events =====
@@ -267,59 +285,122 @@
 
     btnStart.onclick = ()=>{
       if(!state.user) return alert('Sign in first.');
-      if(guardOne()) return;
+      if(state.status!=='IDLE') return alert('A session exists. End or cancel it first.');
       if(state.user.role==='ENG') dlgStartEng.showModal(); else dlgStartFD.showModal();
     };
 
     fdStartType.onchange = ()=>{ fdBypassWrap.style.display = fdStartType.value==='bypass'?'grid':'none'; };
 
-    // ENGINEERING -> Start (creates DB row: PENDING_ACK)
+    // ENG -> Start: insert PENDING_ACK
     btnDoStartEng.onclick = async ()=>{
-      // UI
-      state.status=S.PENDING;
-      state.current={startedAt:Date.now(), startedByRole:'ENG', startedByName:state.user.name, reason:engReason.value.trim()||null, bypassUsed:false};
-      log('start_request_eng', state.current.reason?`Reason: ${state.current.reason}`:''); engReason.value=''; dlgStartEng.close(); render();
+      const reason = engReason.value.trim()||null;
+      engReason.value='';
+      dlgStartEng.close();
 
-      // DB insert
-      try{
-        const { data, error } = await sb
-          .from('fire_watches')
-          .insert({
-            status: 'PENDING_ACK',
-            started_by_role: 'ENG',
-            started_by_name: state.current.startedByName,
-            reason: state.current.reason
-          })
-          .select('id, started_at')
-          .single();
-        if(error){ console.error('Insert error:', error); log('db_error', error.message||'insert failed'); alert('Database insert failed. Check console.'); return; }
-        state.current.db_id = data.id;
-        log('db_insert', `session ${String(data.id).slice(0,8)}…`);
-      }catch(e){ console.error('Insert exception:', e); log('db_error','unexpected insert error'); }
+      const { data, error } = await sb.from('fire_watches').insert({
+        status:'PENDING_ACK',
+        started_by_role:'ENG',
+        started_by_name: state.user.name,
+        reason
+      }).select('*').single();
+
+      if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Insert failed'); return; }
+      log('start_request_eng', reason?`Reason: ${reason}`:'');
+      applyRow(data);
     };
 
-    // FRONT DESK -> Start (preview-only for now)
-    btnDoStartFD.onclick = ()=>{
+    // FD -> Start: normal (PENDING_ACK) or bypass (ACTIVE)
+    btnDoStartFD.onclick = async ()=>{
       const type=fdStartType.value, reason=fdReason.value.trim()||null;
+      fdReason.value=''; dlgStartFD.close();
+
       if(type==='bypass'){
         const panelBy = fdPanelBy.value.trim();
         if(!requireName(panelBy)) return alert('Enter who put the panel on fire watch.');
-        state.status=S.ACTIVE;
-        state.current={startedAt:Date.now(), startedByRole:'FD', startedByName:state.user.name, reason, bypassUsed:true, panelByName:panelBy};
-        log('start_fd_bypass', `Panel by: ${panelBy}`+(reason?` — Reason: ${reason}`:'')); fdPanelBy.value='';
+        fdPanelBy.value='';
+
+        const { data, error } = await sb.from('fire_watches').insert({
+          status:'ACTIVE',
+          started_by_role:'FD',
+          started_by_name: state.user.name,
+          reason,
+          bypass_used:true,
+          panel_by_name: panelBy,
+          fd_ack:true,
+          fd_ack_by_name: state.user.name,
+          fd_ack_at: new Date().toISOString()
+        }).select('*').single();
+
+        if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Insert failed'); return; }
+        log('start_fd_bypass', `Panel by: ${panelBy}`+(reason?` — Reason: ${reason}`:''));
+        applyRow(data);
       }else{
-        state.status=S.PENDING;
-        state.current={startedAt:Date.now(), startedByRole:'FD', startedByName:state.user.name, reason, bypassUsed:false};
+        const { data, error } = await sb.from('fire_watches').insert({
+          status:'PENDING_ACK',
+          started_by_role:'FD',
+          started_by_name: state.user.name,
+          reason
+        }).select('*').single();
+
+        if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Insert failed'); return; }
         log('start_request_fd', reason?`Reason: ${reason}`:'');
+        applyRow(data);
       }
-      fdReason.value=''; dlgStartFD.close(); render();
     };
 
-    btnCancel.onclick = ()=>{ if(!state.user||state.status!==S.PENDING) return; log('cancel_request',`Cancelled by ${state.user.role}`); state.status=S.IDLE; state.current=null; render(); };
+    // Cancel pending → mark ENDED
+    btnCancel.onclick = async ()=>{
+      if(!state.current || state.status!=='PENDING_ACK') return;
+      const { error } = await sb.from('fire_watches').update({
+        status:'ENDED',
+        ended_at: new Date().toISOString(),
+        ended_by_role: state.user?.role||null,
+        ended_by_name: state.user?.name||null,
+        notes: 'cancelled while pending'
+      }).eq('id', state.current.id);
+      if(error){ console.error(error); alert('Cancel failed'); return; }
+      log('cancel_request', `Cancelled by ${state.user?.role||'-'}`);
+      // applyRow will be called by realtime subscription
+    };
+
+    // FD acknowledge → PENDING_ACK to ACTIVE
     btnAcknowledge.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); dlgAck.showModal(); };
-    btnDoAck.onclick = ()=>{ const n=ackName.value.trim(); if(!requireName(n)||state.status!==S.PENDING) return; state.status=S.ACTIVE; state.current.ackAt=Date.now(); state.current.ackByName=n; log('acknowledge'); ackName.value=''; dlgAck.close(); render(); };
+    btnDoAck.onclick = async ()=>{
+      const n = ackName.value.trim(); if(!requireName(n)) return alert('Enter your name.');
+      ackName.value=''; dlgAck.close();
+      if(!state.current) return;
+
+      const { error } = await sb.from('fire_watches').update({
+        status:'ACTIVE',
+        fd_ack:true,
+        fd_ack_by_name: n,
+        fd_ack_at: new Date().toISOString()
+      }).eq('id', state.current.id);
+
+      if(error){ console.error(error); alert('Acknowledge failed'); return; }
+      log('acknowledge', `by ${n}`);
+      // realtime will refresh the UI
+    };
+
+    // End fire watch → ENDED
     btnEnd.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); dlgEnd.showModal(); };
-    btnDoEnd.onclick = ()=>{ const n=endName.value.trim(); if(!requireName(n)) return; const notes=endNotes.value.trim(); log('end_fire_watch', notes?`Notes: ${notes}`:''); state.status=S.IDLE; state.current=null; endName.value=''; endNotes.value=''; dlgEnd.close(); render(); };
+    btnDoEnd.onclick = async ()=>{
+      const n = endName.value.trim(); if(!requireName(n)) return alert('Enter your name.');
+      const notes = endNotes.value.trim(); endName.value=''; endNotes.value=''; dlgEnd.close();
+      if(!state.current) return;
+
+      const { error } = await sb.from('fire_watches').update({
+        status:'ENDED',
+        ended_at: new Date().toISOString(),
+        ended_by_role: state.user.role,
+        ended_by_name: n,
+        notes: notes || null
+      }).eq('id', state.current.id);
+
+      if(error){ console.error(error); alert('End failed'); return; }
+      log('end_fire_watch', notes?`Notes: ${notes}`:'');
+      // realtime will refresh the UI
+    };
 
     btnExport.onclick = ()=>{
       const rows=[['Time','Action','Role','Name','Details']];
@@ -329,7 +410,12 @@
       const a=document.createElement('a'); a.href=url; a.download=`firewatch_log_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     };
 
-    render();
+    // ===== Initial sync + realtime =====
+    (async () => {
+      const row = await fetchCurrent();
+      applyRow(row);
+      subscribeRealtime();
+    })();
   </script>
 </body>
 </html>
