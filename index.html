@@ -508,5 +508,26 @@
     // initial
     render();
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+  // quick connectivity test
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  async function supabasePing() {
+    const { error } = await sb.from('fire_watches').select('id', { head: true, count: 'exact' });
+    const pill = document.getElementById('userPill');
+    if (error) {
+      console.error('Supabase connection failed:', error);
+      pill.textContent = 'Supabase: connection error';
+    } else {
+      console.log('Supabase connection OK');
+      pill.textContent = 'Connected to Supabase';
+    }
+  }
+
+  supabasePing();
+</script>
+
 </body>
 </html>
