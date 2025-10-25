@@ -79,7 +79,6 @@
     </section>
 
     <div class="row">
-      <!-- Left -->
       <section class="card stack">
         <div class="h">
           <div class="title">Control Panel</div>
@@ -116,11 +115,10 @@
         </div>
       </section>
 
-      <!-- Right -->
       <section class="card stack">
         <div class="h">
           <div class="title">Event Log (All activity)</div>
-        <div class="toolbar">
+          <div class="toolbar">
             <button id="btnExport" class="btn ghost">Export CSV</button>
             <span class="muted">Realtime + DB</span>
           </div>
@@ -137,7 +135,7 @@
     </div>
   </main>
 
-  <!-- Login Modal -->
+  <!-- Login -->
   <dialog id="dlgLogin"><div class="modal">
     <div class="head">Sign in</div>
     <div class="stack">
@@ -184,7 +182,7 @@
     </div>
   </div></dialog>
 
-  <!-- Acknowledge -->
+  <!-- Ack -->
   <dialog id="dlgAck"><div class="modal">
     <div class="head">Acknowledge Fire Watch (Front Desk)</div>
     <div class="stack">
@@ -362,6 +360,8 @@
     }
 
     /* History */
+    function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
     function openHistory(){ $('dlgHistory').showModal(); loadHistory(); }
     async function loadHistory(){
       const q = ($('histSearch').value||'').trim().toLowerCase();
@@ -393,14 +393,14 @@
         const ended = r.status==='ENDED' ? `${fmt(r.ended_at)} · by ${r.ended_by_role||'—'} — ${r.ended_by_name||'—'}` : '—';
         const rn = [r.reason, r.notes].filter(Boolean).join(' • ');
         return `<tr>
-          <td class="nowrap">${started}</td>
-          <td>${r.status}</td>
-          <td>${startedBy}</td>
-          <td>${ack}</td>
-          <td>${ended}</td>
-          <td>${rn||''}</td>
+          <td class="nowrap">${escapeHtml(started)}</td>
+          <td>${escapeHtml(r.status)}</td>
+          <td>${escapeHtml(startedBy)}</td>
+          <td>${escapeHtml(ack)}</td>
+          <td>${escapeHtml(ended)}</td>
+          <td>${escapeHtml(rn||'')}</td>
           <td class="actions-col">
-            <button class="btn sm" onclick="downloadPDF(${r.id})">PDF</button>
+            <button class="btn sm hist-pdf" data-id="${escapeHtml(r.id)}">PDF</button>
           </td>
         </tr>`;
       }).join('');
@@ -422,32 +422,27 @@
       const a=document.createElement('a'); a.href=url; a.download=`firewatch_history_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     }
 
-    /* PDF generation (single + all) */
+    /* PDF generation */
     function pdfForRecord(doc, r, isFirstPage){
-      const { jsPDF } = window.jspdf;
       if (!isFirstPage) doc.addPage();
       const startedAt = fmt(r.started_at);
       const endedAt   = fmt(r.ended_at);
       const title = 'Fire Watch Report';
-
       doc.setFont('helvetica','bold'); doc.setFontSize(18);
       doc.text(title, 40, 50);
       doc.setFontSize(11); doc.setFont('helvetica','normal');
       doc.text(`Record ID: ${r.id}`, 40, 70);
       doc.text(`Created at: ${startedAt || '—'}`, 40, 86);
       if (endedAt) doc.text(`Ended at: ${endedAt}`, 40, 102);
-
       const lines = [
         ['Status', r.status || '—'],
         ['Started by', `${r.started_by_role || '—'} — ${r.started_by_name || '—'}`],
-        ['Acknowledged', r.bypass_used
-            ? `Bypass ✓ (Panel by: ${r.panel_by_name || '—'})`
-            : (r.fd_ack ? `FD: ${r.fd_ack_by_name || '—'} @ ${fmt(r.fd_ack_at)}` : '—')],
+        ['Acknowledged', r.bypass_used ? `Bypass ✓ (Panel by: ${r.panel_by_name || '—'})`
+                                       : (r.fd_ack ? `FD: ${r.fd_ack_by_name || '—'} @ ${fmt(r.fd_ack_at)}` : '—')],
         ['Ended by', r.status==='ENDED' ? `${r.ended_by_role || '—'} — ${r.ended_by_name || '—'}` : '—'],
         ['Reason', r.reason || '—'],
         ['Notes', r.notes || '—'],
       ];
-
       doc.autoTable({
         head: [['Field','Value']],
         body: lines,
@@ -456,13 +451,11 @@
         headStyles: { fillColor: [20,25,45] },
         columnStyles: { 0:{cellWidth:150} }
       });
-
       const url = location.href.split('?')[0];
       const when = new Date().toLocaleString('en-CA',{ timeZone: tz });
       doc.setFontSize(9);
       doc.text(`${url} • Generated ${when}`, 40, doc.internal.pageSize.getHeight() - 24);
     }
-
     function generatePDF(record){
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit:'pt', format:'letter' });
@@ -470,7 +463,6 @@
       const fileSafeDate = (new Date(record.ended_at || record.started_at || Date.now())).toISOString().slice(0,19).replace(/[:T]/g,'-');
       doc.save(`firewatch_${record.id}_${fileSafeDate}.pdf`);
     }
-
     async function generateAllPDF(){
       if (!state.history.length) { alert('No history loaded. Click Refresh first.'); return; }
       const { jsPDF } = window.jspdf;
@@ -479,12 +471,15 @@
       doc.save(`firewatch_history_${Date.now()}.pdf`);
     }
 
-    // Expose for History row buttons
-    window.downloadPDF = async function(id){
+    // Row PDF button handler (no inline JS)
+    async function handleHistoryClick(e){
+      const btn = e.target.closest('button.hist-pdf');
+      if (!btn) return;
+      const id = btn.dataset.id; // string safe
       const { data, error } = await sb.from('fire_watches').select('*').eq('id', id).single();
-      if(error){ console.error('fetch record for pdf', error); return alert('Could not load record'); }
+      if(error){ console.error('fetch record for pdf', error); alert('Could not load record'); return; }
       generatePDF(data);
-    };
+    }
 
     /* ------------ Actions wiring ------------- */
     function handleLoginOpen(){ $('dlgLogin').showModal(); }
@@ -559,11 +554,11 @@
       }).eq('id', state.current.id).select('*').single();
       if(error){ console.error(error); return alert('End failed'); }
       logEvent('end_fire_watch', notes?`notes=${notes}`:''); applyRow(null);
-      try{ generatePDF(data); }catch(e){ console.error('PDF generation failed', e); }
+      try{ const { jsPDF } = window.jspdf; generatePDF(data); }catch(e){ console.error('PDF generation failed', e); }
     }
 
     function sanityCheckIDs(){
-      const ids=['dlgLogin','dlgStartEng','dlgStartFD','dlgAck','dlgEnd','dlgHistory','btnLogin','btnLogout','btnStart','btnAcknowledge','btnCancel','btnEnd','btnOpenHistory','btnDoLogin','btnDoStartEng','btnDoStartFD','btnDoAck','btnDoEnd','btnCancelLogin','btnCancelStartEng','btnCancelStartFD','btnCancelAck','btnCancelEnd','btnHistRefresh','btnHistExport','btnHistPDFAll','btnCloseHistory','btnExport'];
+      const ids=['dlgLogin','dlgStartEng','dlgStartFD','dlgAck','dlgEnd','dlgHistory','btnLogin','btnLogout','btnStart','btnAcknowledge','btnCancel','btnEnd','btnOpenHistory','btnDoLogin','btnDoStartEng','btnDoStartFD','btnDoAck','btnDoEnd','btnCancelLogin','btnCancelStartEng','btnCancelStartFD','btnCancelAck','btnCancelEnd','btnHistRefresh','btnHistExport','btnHistPDFAll','btnCloseHistory','btnExport','histTable'];
       const missing = ids.filter(id => !$(id));
       if(missing.length) console.warn('Missing elements with these IDs:', missing);
     }
@@ -599,6 +594,9 @@
       $('btnCloseHistory').onclick = () => $('dlgHistory').close();
 
       $('btnExport').onclick = exportEvents;
+
+      // ✅ Event delegation for History PDF buttons
+      $('histTable').addEventListener('click', handleHistoryClick);
 
       sanityCheckIDs();
 
