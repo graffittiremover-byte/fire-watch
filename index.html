@@ -4,8 +4,25 @@
   <meta charset="utf-8" />
   <title>Fire Watch</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- tiny inline favicon to stop 404 -->
+
+  <!-- Always load the latest version (bump APP_VERSION when you deploy) -->
+  <script>
+  (function () {
+    const APP_VERSION = "2025-10-25-2"; // <-- bump this string on each commit
+    const u = new URL(location.href);
+    if (u.searchParams.get("v") !== APP_VERSION) {
+      u.searchParams.set("v", APP_VERSION);
+      location.replace(u.toString());
+    }
+  })();
+  </script>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
+
+  <!-- tiny inline favicon (stops 404) -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50%25' x='50%25' dy='.35em' text-anchor='middle'%3E🔥%3C/text%3E%3C/svg%3E">
+
   <style>
     :root{ --bg:#0f172a; --card:#111827; --muted:#1f2937;
       --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --ink:#e5e7eb; --ink2:#94a3b8; --pill:#0b1224; }
@@ -235,7 +252,7 @@
     })();
   </script>
 
-  <!-- App logic (global functions used by inline onclicks) -->
+  <!-- App logic (inline handlers) -->
   <script>
     const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
     const state = { status:S.IDLE, current:null, user:null, logs:[] };
@@ -303,7 +320,7 @@
         }).subscribe();
     }
 
-    // Inline-handled actions
+    // Inline handlers
     function handleLoginOpen(){ document.getElementById('dlgLogin').showModal(); }
     function handleLogout(){ setUser(null); log('sign_out'); }
     function handleDoLogin(){
@@ -314,7 +331,6 @@
       if((role==='ENG' && pin!=='4156')||(role==='FD' && pin!=='6666')) return alert('Wrong PIN for role.');
       setUser({role,name}); log('sign_in'); document.getElementById('dlgLogin').close(); document.getElementById('loginPin').value='';
     }
-
     function handleStart(){
       if(!state.user) return alert('Sign in first.');
       if(state.status!==S.IDLE) return alert('A session exists. End or cancel it first.');
@@ -326,7 +342,6 @@
       const type=document.getElementById('fdStartType').value;
       wrap.style.display = type==='bypass'?'grid':'none';
     }
-
     async function handleDoStartEng(){
       const ta=document.getElementById('engReason');
       const reason = ta.value.trim()||null; ta.value=''; document.getElementById('dlgStartEng').close();
@@ -336,12 +351,10 @@
       if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Insert failed'); return; }
       log('start_request_eng', reason?`Reason: ${reason}`:''); applyRow(data);
     }
-
     async function handleDoStartFD(){
       const type=document.getElementById('fdStartType').value;
       const reason=(document.getElementById('fdReason').value.trim()||null);
       document.getElementById('fdReason').value=''; document.getElementById('dlgStartFD').close();
-
       if(type==='bypass'){
         const panelBy = document.getElementById('fdPanelBy').value.trim();
         if(!requireName(panelBy)) return alert('Enter who put the panel on fire watch.');
@@ -360,7 +373,6 @@
         log('start_request_fd', reason?`Reason: ${reason}`:''); applyRow(data);
       }
     }
-
     function handleAckOpen(){ if(!state.user) return alert('Sign in first.'); document.getElementById('dlgAck').showModal(); }
     async function handleDoAck(){
       const n=document.getElementById('ackName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
@@ -371,7 +383,6 @@
       if(error){ console.error(error); alert('Acknowledge failed'); return; }
       log('acknowledge',`by ${n}`);
     }
-
     async function handleCancel(){
       if(!state.current || state.status!==S.PENDING) return;
       const { error } = await sb.from('fire_watches').update({
@@ -381,7 +392,6 @@
       if(error){ console.error(error); alert('Cancel failed'); return; }
       log('cancel_request',`Cancelled by ${state.user?.role||'-'}`);
     }
-
     function handleEndOpen(){ if(!state.user) return alert('Sign in first.'); document.getElementById('dlgEnd').showModal(); }
     async function handleDoEnd(){
       const n=document.getElementById('endName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
@@ -394,7 +404,6 @@
       if(error){ console.error(error); alert('End failed'); return; }
       log('end_fire_watch', notes?`Notes: ${notes}`:'');
     }
-
     function handleExport(){
       const rows=[['Time','Action','Role','Name','Details']];
       state.logs.slice().reverse().forEach(l=> rows.push([fmt(l.ts),l.action,l.role,l.name,(l.details||'').replace(/\n/g,' ')]));
@@ -412,7 +421,7 @@
     // initial sync + realtime
     (async () => {
       const row = await fetchCurrent(); applyRow(row);
-      // turn Realtime ON for `fire_watches` in Supabase
+      // turn Realtime ON for the `fire_watches` table in Supabase UI
       subscribeRealtime();
     })();
   </script>
