@@ -277,6 +277,11 @@
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- jsPDF (for PDF generation) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
   <script>
     const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
@@ -335,7 +340,7 @@
       render();
     }
 
-    /* Events table (global activity) */
+    /* Events (global) */
     async function fetchEvents(){
       const { data, error } = await sb.from('events').select('*').order('id',{ascending:false}).limit(200);
       if(error){ console.error('fetchEvents', error); return; }
@@ -421,13 +426,57 @@
       }).join('');
       tbody.innerHTML = rows || `<tr><td colspan="6" class="muted">No records found.</td></tr>`;
     }
-    function exportHistory(){
-      const rows=[['Started','Status','Started By','Acknowledged','Ended','Reason / Notes']];
-      state.history?.slice?.().forEach?.(()=>{});
-      // kept for symmetry; actual export lives in Event Log for now
+
+    /* PDF generation */
+    function generatePDF(r){
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:'pt', format:'letter' });
+
+      const startedAt = fmt(r.started_at);
+      const endedAt   = fmt(r.ended_at);
+      const title = 'Fire Watch Report';
+
+      // Header
+      doc.setFont('helvetica','bold'); doc.setFontSize(18);
+      doc.text(title, 40, 50);
+      doc.setFontSize(11); doc.setFont('helvetica','normal');
+      doc.text(`Record ID: ${r.id}`, 40, 70);
+      doc.text(`Created at: ${startedAt || '—'}`, 40, 86);
+      if (endedAt) doc.text(`Ended at: ${endedAt}`, 40, 102);
+
+      // Summary key/values
+      const lines = [
+        ['Status', r.status || '—'],
+        ['Started by', `${r.started_by_role || '—'} — ${r.started_by_name || '—'}`],
+        ['Acknowledged', r.bypass_used
+            ? `Bypass ✓ (Panel by: ${r.panel_by_name || '—'})`
+            : (r.fd_ack ? `FD: ${r.fd_ack_by_name || '—'} @ ${fmt(r.fd_ack_at)}` : '—')],
+        ['Ended by', r.status==='ENDED' ? `${r.ended_by_role || '—'} — ${r.ended_by_name || '—'}` : '—'],
+        ['Reason', r.reason || '—'],
+        ['Notes', r.notes || '—'],
+      ];
+
+      // Table
+      doc.autoTable({
+        head: [['Field','Value']],
+        body: lines,
+        startY: 120,
+        styles: { fontSize: 11, cellPadding: 6 },
+        headStyles: { fillColor: [20,25,45] },
+        columnStyles: { 0:{cellWidth:150} }
+      });
+
+      // Footer
+      const url = location.href.split('?')[0];
+      const when = new Date().toLocaleString('en-CA',{ timeZone: tz });
+      doc.setFontSize(9);
+      doc.text(`${url} • Generated ${when}`, 40, doc.internal.pageSize.getHeight() - 24);
+
+      const fileSafeDate = (new Date(r.ended_at || r.started_at || Date.now())).toISOString().slice(0,19).replace(/[:T]/g,'-');
+      doc.save(`firewatch_${r.id}_${fileSafeDate}.pdf`);
     }
 
-    /* Handlers */
+    /* --------------- Handlers + wiring --------------- */
     function handleLoginOpen(){ $('dlgLogin').showModal(); }
     function handleLogout(){ logEvent('sign_out'); setUser(null); }
     function handleDoLogin(){
@@ -503,15 +552,30 @@
       logEvent('cancel_request', `by=${state.user?.role}/${state.user?.name}`);
     }
     function handleEndOpen(){ if(!state.user) return alert('Sign in first.'); $('dlgEnd').showModal(); }
+
     async function handleDoEnd(){
       const n=$('endName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
       const notes=$('endNotes').value.trim();
       $('endName').value=''; $('endNotes').value=''; $('dlgEnd').close(); if(!state.current) return;
-      const { error } = await sb.from('fire_watches').update({
-        status:'ENDED', ended_at:new Date().toISOString(), ended_by_role:state.user.role, ended_by_name:n, notes:notes||null
-      }).eq('id', state.current.id);
+
+      // 1) Update DB to ENDED
+      const { data, error } = await sb.from('fire_watches').update({
+        status:'ENDED', ended_at:new Date().toISOString(),
+        ended_by_role:state.user.role, ended_by_name:n, notes:notes||null
+      }).eq('id', state.current.id).select('*').single();
+
       if(error){ console.error(error); alert('End failed'); return; }
+
+      // 2) Log event
       logEvent('end_fire_watch', notes?`notes=${notes}`:'');
+
+      // 3) Refresh the current row + render
+      applyRow(null);
+      const latest = await sb.from('fire_watches').select('*').eq('id', data.id).single();
+      const record = latest.data || data;
+
+      // 4) Generate PDF of the finished record
+      try { generatePDF(record); } catch(e){ console.error('PDF generation failed', e); }
     }
 
     function sanityCheckIDs(){
@@ -552,7 +616,7 @@
       $('btnCancelEnd').onclick = () => $('dlgEnd').close();
 
       $('btnHistRefresh').onclick = loadHistory;
-      $('btnHistExport').onclick = () => { /* reuse event export for now */ };
+      $('btnHistExport').onclick = () => { /* optional: reuse event export */ };
       $('btnCloseHistory').onclick = () => $('dlgHistory').close();
 
       sanityCheckIDs();
