@@ -8,7 +8,7 @@
   <!-- Always load the latest version (bump APP_VERSION when you deploy) -->
   <script>
   (function () {
-    const APP_VERSION = "2025-10-25-2"; // <-- bump this string on each commit
+    const APP_VERSION = "2025-10-25-3"; // <-- bump this on each commit
     const u = new URL(location.href);
     if (u.searchParams.get("v") !== APP_VERSION) {
       u.searchParams.set("v", APP_VERSION);
@@ -20,7 +20,7 @@
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
 
-  <!-- tiny inline favicon (stops 404) -->
+  <!-- tiny inline favicon -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50%25' x='50%25' dy='.35em' text-anchor='middle'%3E🔥%3C/text%3E%3C/svg%3E">
 
   <style>
@@ -30,9 +30,9 @@
     body{ margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
       background:linear-gradient(180deg,#0b1020,#0f172a 45%,#0b1020);
       color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-    .app{width:100%; max-width:980px; display:grid; gap:16px}
+    .app{width:100%; max-width:1100px; display:grid; gap:16px}
     .row{display:grid; gap:16px}
-    @media (min-width:900px){ .row{grid-template-columns:1.2fr .8fr} }
+    @media (min-width:980px){ .row{grid-template-columns:1.2fr .8fr} }
     .card{ background:linear-gradient(180deg,#12192f,#0f152a);
       border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:20px; box-shadow:0 10px 35px rgba(0,0,0,.35) }
     .h{display:flex; align-items:center; justify-content:space-between; gap:12px}
@@ -59,14 +59,16 @@
     .rowgrid{display:grid; gap:10px; grid-template-columns:1fr 1fr}
     .muted{color:var(--ink2); font-size:13px}
     table{width:100%; border-collapse:collapse; font-size:13px}
-    th,td{padding:10px; border-bottom:1px solid rgba(148,163,184,.12); text-align:left}
+    th,td{padding:10px; border-bottom:1px solid rgba(148,163,184,.12); text-align:left; vertical-align:top}
     th{color:#a8b3cf; font-weight:600}
     .toolbar{display:flex; gap:8px; flex-wrap:wrap}
-    dialog{ border:none; border-radius:16px; padding:0; background:transparent; max-width:520px; width:calc(100% - 32px) }
+    dialog{ border:none; border-radius:16px; padding:0; background:transparent; max-width:980px; width:calc(100% - 32px) }
     .modal{background:linear-gradient(180deg,#12192f,#0f152a); border:1px solid rgba(148,163,184,.15); border-radius:16px; padding:18px}
-    .modal .head{font-weight:800; margin-bottom:6px}
+    .modal .head{font-weight:800; margin-bottom:10px}
     .modal .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
     .flex{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .grid3{display:grid; gap:8px; grid-template-columns:1fr 1fr 1fr}
+    .nowrap{white-space:nowrap}
   </style>
 </head>
 <body>
@@ -83,6 +85,7 @@
         <div class="pill">Timezone: America/Toronto</div>
         <div id="userPill" class="pill">Not signed in</div>
         <div id="backendPill" class="pill">Backend: connecting…</div>
+        <button class="btn ghost" onclick="openHistory()">History</button>
       </div>
     </section>
 
@@ -110,7 +113,8 @@
           </div>
           <div class="toolbar">
             <button id="btnAcknowledge" class="btn ok" style="display:none" onclick="handleAckOpen()">Acknowledge (Front Desk)</button>
-            <button id="btnCancel" class="btn bad" onclick="handleCancel()">Cancel Request</button>
+            <!-- Only show Cancel when signed in -->
+            <button id="btnCancel" class="btn bad" style="display:none" onclick="handleCancel()">Cancel Request</button>
           </div>
         </div>
 
@@ -124,10 +128,10 @@
         </div>
       </section>
 
-      <!-- Right: Log -->
+      <!-- Right: Event Log (session-local diagnostics) -->
       <section class="card stack">
         <div class="h">
-          <div class="title">Event Log</div>
+          <div class="title">Event Log (This Browser)</div>
           <div class="toolbar">
             <button id="btnExport" class="btn ghost" onclick="handleExport()">Export CSV</button>
             <span class="muted">Realtime + DB</span>
@@ -141,7 +145,6 @@
             <tbody></tbody>
           </table>
         </div>
-        <div class="muted">PINs: <small>Engineering 4156</small> · <small>Front Desk 6666</small></div>
       </section>
     </div>
   </main>
@@ -239,6 +242,44 @@
     </div>
   </dialog>
 
+  <!-- History -->
+  <dialog id="dlgHistory">
+    <div class="modal">
+      <div class="head">Fire Watch History</div>
+      <div class="grid3">
+        <input id="histSearch" type="text" placeholder="Search name / reason / notes" />
+        <select id="histStatus">
+          <option value="">All statuses</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="PENDING_ACK">PENDING_ACK</option>
+          <option value="ENDED">ENDED</option>
+        </select>
+        <div class="toolbar">
+          <button class="btn" onclick="loadHistory()">Refresh</button>
+          <button class="btn ghost" onclick="exportHistory()">Export CSV</button>
+        </div>
+      </div>
+      <div style="overflow:auto; max-height:60vh; margin-top:10px; border:1px solid rgba(148,163,184,.12); border-radius:12px;">
+        <table id="histTable">
+          <thead>
+            <tr>
+              <th class="nowrap">Started</th>
+              <th>Status</th>
+              <th>Started by</th>
+              <th>Acknowledged</th>
+              <th>Ended</th>
+              <th>Reason / Notes</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgHistory').close()">Close</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Supabase (load first) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -255,9 +296,9 @@
   <!-- App logic (inline handlers) -->
   <script>
     const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
-    const state = { status:S.IDLE, current:null, user:null, logs:[] };
+    const state = { status:S.IDLE, current:null, user:null, logs:[], history:[] };
     const tz = 'America/Toronto';
-    const fmt = ts => new Date(ts).toLocaleString('en-CA',{timeZone:tz});
+    const fmt = ts => ts ? new Date(ts).toLocaleString('en-CA',{timeZone:tz}) : '—';
     const requireName = v => v && v.trim().length>=2;
 
     function setStatus(s){
@@ -269,6 +310,9 @@
       document.getElementById('panelIdle').style.display    = state.status===S.IDLE?'grid':'none';
       document.getElementById('panelPending').style.display = state.status===S.PENDING?'grid':'none';
       document.getElementById('panelActive').style.display  = state.status===S.ACTIVE?'grid':'none';
+
+      // Only show Cancel when signed in
+      document.getElementById('btnCancel').style.display = (state.status===S.PENDING && state.user) ? 'inline-block' : 'none';
 
       if(state.current){
         if(state.status===S.PENDING){
@@ -301,7 +345,7 @@
       render();
     }
 
-    // DB helpers
+    // DB helpers (current)
     async function fetchCurrent(){
       const { data, error } = await sb.from('fire_watches')
         .select('*').in('status',['PENDING_ACK','ACTIVE'])
@@ -320,7 +364,79 @@
         }).subscribe();
     }
 
-    // Inline handlers
+    // History helpers
+    function openHistory(){ document.getElementById('dlgHistory').showModal(); loadHistory(); }
+    async function loadHistory(){
+      const q = (document.getElementById('histSearch').value||'').trim().toLowerCase();
+      const statusFilter = document.getElementById('histStatus').value;
+
+      let query = sb.from('fire_watches')
+        .select('*')
+        .order('started_at', { ascending:false })
+        .limit(200); // fetch latest 200
+
+      if (statusFilter) query = query.eq('status', statusFilter);
+
+      const { data, error } = await query;
+      if (error){ console.error('history load', error); return; }
+
+      // client filter for simple search
+      const filtered = data.filter(r=>{
+        if(!q) return true;
+        const hay = [
+          r.started_by_name, r.started_by_role,
+          r.fd_ack_by_name, r.panel_by_name,
+          r.ended_by_name, r.reason, r.notes
+        ].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+
+      state.history = filtered;
+      renderHistory();
+    }
+    function renderHistory(){
+      const tbody = document.querySelector('#histTable tbody');
+      const rows = state.history.map(r=>{
+        const started = fmt(r.started_at);
+        const startedBy = `${r.started_by_role||'—'} — ${r.started_by_name||'—'}`;
+        const ack = r.bypass_used
+          ? `Bypass ✓ (Panel by: ${r.panel_by_name||'—'})`
+          : (r.fd_ack ? `FD: ${r.fd_ack_by_name||'—'} @ ${fmt(r.fd_ack_at)}` : '—');
+        const ended = r.status==='ENDED'
+          ? `${fmt(r.ended_at)} · by ${r.ended_by_role||'—'} — ${r.ended_by_name||'—'}`
+          : '—';
+        const rn = [r.reason, r.notes].filter(Boolean).join(' • ');
+        return `<tr>
+          <td class="nowrap">${started}</td>
+          <td>${r.status}</td>
+          <td>${startedBy}</td>
+          <td>${ack}</td>
+          <td>${ended}</td>
+          <td>${rn || ''}</td>
+        </tr>`;
+      }).join('');
+      tbody.innerHTML = rows || `<tr><td colspan="6" class="muted">No records found.</td></tr>`;
+    }
+    function exportHistory(){
+      const rows=[['Started','Status','Started By','Acknowledged','Ended','Reason / Notes']];
+      state.history.slice().forEach(r=>{
+        const started = fmt(r.started_at);
+        const startedBy = `${r.started_by_role||'—'} — ${r.started_by_name||'—'}`;
+        const ack = r.bypass_used
+          ? `Bypass (Panel by: ${r.panel_by_name||'—'})`
+          : (r.fd_ack ? `FD: ${r.fd_ack_by_name||'—'} @ ${fmt(r.fd_ack_at)}` : '—');
+        const ended = r.status==='ENDED'
+          ? `${fmt(r.ended_at)} · by ${r.ended_by_role||'—'} — ${r.ended_by_name||'—'}`
+          : '—';
+        const rn = [r.reason, r.notes].filter(Boolean).join(' | ');
+        rows.push([started, r.status, startedBy, ack, ended, rn]);
+      });
+      const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=`firewatch_history_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+    }
+
+    // Inline handlers (auth + actions)
     function handleLoginOpen(){ document.getElementById('dlgLogin').showModal(); }
     function handleLogout(){ setUser(null); log('sign_out'); }
     function handleDoLogin(){
@@ -384,6 +500,7 @@
       log('acknowledge',`by ${n}`);
     }
     async function handleCancel(){
+      if(!state.user){ alert('Sign in first.'); return; }               // <— hard gate
       if(!state.current || state.status!==S.PENDING) return;
       const { error } = await sb.from('fire_watches').update({
         status:'ENDED', ended_at:new Date().toISOString(),
@@ -417,12 +534,12 @@
     window.handleStart=handleStart; window.handleFDTypeChange=handleFDTypeChange; window.handleDoStartEng=handleDoStartEng;
     window.handleDoStartFD=handleDoStartFD; window.handleAckOpen=handleAckOpen; window.handleDoAck=handleDoAck;
     window.handleCancel=handleCancel; window.handleEndOpen=handleEndOpen; window.handleDoEnd=handleDoEnd; window.handleExport=handleExport;
+    window.openHistory=openHistory; window.loadHistory=loadHistory; window.exportHistory=exportHistory;
 
     // initial sync + realtime
     (async () => {
       const row = await fetchCurrent(); applyRow(row);
-      // turn Realtime ON for the `fire_watches` table in Supabase UI
-      subscribeRealtime();
+      subscribeRealtime(); // ensure Realtime is ON for `fire_watches` table
     })();
   </script>
 </body>
