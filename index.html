@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Fire Watch – Preview</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0f172a; --card:#111827; --muted:#1f2937;
+      --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --ink:#e5e7eb; --ink2:#94a3b8; --accent:#38bdf8;
+      --pill:#0b1224;
+    }
+    *{box-sizing:border-box} body{
+      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(180deg,#0b1020, #0f172a 45%, #0b1020);
+      color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .app{width:100%; max-width:980px; display:grid; gap:16px}
+    .row{display:grid; gap:16px}
+    @media (min-width:900px){ .row{grid-template-columns: 1.2fr .8fr} }
+    .card{
+      background:linear-gradient(180deg, #12192f, #0f152a);
+      border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:20px; box-shadow:0 10px 35px rgba(0,0,0,.35)
+    }
+    .h{display:flex; align-items:center; justify-content:space-between; gap:12px}
+    .title{font-size:18px; font-weight:700; letter-spacing:.2px}
+    .pill{font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.2); background:var(--pill); color:var(--ink2)}
+    .status{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px; border:1px solid rgba(148,163,184,.2)}
+    .dot{width:10px; height:10px; border-radius:50%}
+    .s-idle{background:var(--muted)}
+    .s-pending{background:var(--warn)}
+    .s-active{background:var(--ok)}
+    .s-bad{background:var(--bad)}
+    .stack{display:grid; gap:12px}
+    label{font-size:12px; color:var(--ink2)}
+    input[type="text"], input[type="password"], select, textarea{
+      width:100%; background:#0b1020; color:var(--ink);
+      border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:10px 12px; outline:none;
+    }
+    textarea{min-height:72px; resize:vertical}
+    .btn{
+      appearance:none; border:none; border-radius:14px; padding:12px 16px; font-weight:700; cursor:pointer;
+      background:linear-gradient(180deg,#1f2937,#111827); color:var(--ink);
+      border:1px solid rgba(148,163,184,.2);
+    }
+    .btn:hover{filter:brightness(1.05)}
+    .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7); border-color:#0284c7; color:white}
+    .btn.ok{background:linear-gradient(180deg,#16a34a,#15803d); border-color:#15803d; color:white}
+    .btn.warn{background:linear-gradient(180deg,#f59e0b,#d97706); border-color:#d97706; color:black}
+    .btn.bad{background:linear-gradient(180deg,#dc2626,#b91c1c); border-color:#b91c1c; color:white}
+    .btn.ghost{background:transparent}
+    .rowgrid{display:grid; gap:10px; grid-template-columns:1fr 1fr}
+    .muted{color:var(--ink2); font-size:13px}
+    table{width:100%; border-collapse:collapse; font-size:13px}
+    th,td{padding:10px; border-bottom:1px solid rgba(148,163,184,.12); text-align:left}
+    th{color:#a8b3cf; font-weight:600}
+    .toolbar{display:flex; gap:8px; flex-wrap:wrap}
+    dialog{
+      border:none; border-radius:16px; padding:0; background:transparent;
+      max-width:520px; width:calc(100% - 32px)
+    }
+    .modal{background:linear-gradient(180deg,#12192f,#0f152a); border:1px solid rgba(148,163,184,.15); border-radius:16px; padding:18px}
+    .modal .head{font-weight:800; margin-bottom:6px}
+    .modal .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
+    .flex{display:flex; gap:10px; align-items:center}
+    .right{justify-content:flex-end}
+    small.code{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; padding:2px 6px; border-radius:8px; background:#0b1020; border:1px solid rgba(148,163,184,.2); color:#a8b3cf}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <!-- Header / Status -->
+    <section class="card">
+      <div class="h">
+        <div class="title">Fire Watch Console (Preview)</div>
+        <div id="statusPill" class="status">
+          <div id="statusDot" class="dot s-idle"></div>
+          <div id="statusText">Idle</div>
+        </div>
+      </div>
+      <div class="flex" style="margin-top:10px;">
+        <div class="pill">Timezone: America/Toronto</div>
+        <div id="userPill" class="pill">Not signed in</div>
+        <div class="pill">MVP demo (no database)</div>
+      </div>
+    </section>
+
+    <div class="row">
+      <!-- Left: Main Panel -->
+      <section class="card stack">
+        <div class="h">
+          <div class="title">Control Panel</div>
+          <div class="toolbar">
+            <button id="btnLogin" class="btn">Sign in</button>
+            <button id="btnLogout" class="btn ghost" style="display:none">Sign out</button>
+          </div>
+        </div>
+
+        <div id="panelIdle" class="stack">
+          <div class="muted">Current state: <b>Idle</b>. Start a Fire Watch.</div>
+          <button id="btnStart" class="btn primary">Start Fire Watch</button>
+        </div>
+
+        <div id="panelPending" class="stack" style="display:none">
+          <div class="muted">Status: <b>Waiting on Front Desk to confirm</b>.</div>
+          <div class="rowgrid">
+            <div><b>Requested by:</b> <span id="pendingBy"></span></div>
+            <div><b>At:</b> <span id="pendingAt"></span></div>
+          </div>
+          <div class="toolbar">
+            <button id="btnAcknowledge" class="btn ok" style="display:none">Acknowledge (Front Desk)</button>
+            <button id="btnCancel" class="btn bad">Cancel Request</button>
+          </div>
+        </div>
+
+        <div id="panelActive" class="stack" style="display:none">
+          <div class="muted">Status: <b>On Fire Watch</b>. Started <span id="activeSince"></span>.</div>
+          <div class="rowgrid">
+            <div><b>Started by:</b> <span id="activeBy"></span></div>
+            <div><b>Acknowledged by:</b> <span id="activeAck"></span></div>
+          </div>
+          <button id="btnEnd" class="btn warn">End Fire Watch</button>
+        </div>
+      </section>
+
+      <!-- Right: Quick Info / Log -->
+      <section class="card stack">
+        <div class="h">
+          <div class="title">Event Log</div>
+          <div class="toolbar">
+            <button id="btnExport" class="btn ghost">Export CSV</button>
+            <span class="muted">Preview only</span>
+          </div>
+        </div>
+        <div style="overflow:auto; max-height:380px; border:1px solid rgba(148,163,184,.12); border-radius:12px;">
+          <table id="logTable">
+            <thead><tr>
+              <th>Time</th><th>Action</th><th>Role</th><th>Name</th><th>Details</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="muted">PINs: <small class="code">Engineering 4156</small> · <small class="code">Front Desk 6666</small></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Login Modal -->
+  <dialog id="dlgLogin">
+    <div class="modal">
+      <div class="head">Sign in</div>
+      <div class="stack">
+        <label>Role</label>
+        <select id="loginRole">
+          <option value="ENG">Engineering</option>
+          <option value="FD">Front Desk</option>
+        </select>
+        <label>PIN</label>
+        <input id="loginPin" type="password" placeholder="Enter PIN"/>
+        <label>Your Name</label>
+        <input id="loginName" type="text" placeholder="First & last name"/>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="dlgLogin.close()">Cancel</button>
+        <button id="btnDoLogin" class="btn primary">Sign in</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Start (Engineering) -->
+  <dialog id="dlgStartEng">
+    <div class="modal">
+      <div class="head">Start Fire Watch (Engineering)</div>
+      <div class="stack">
+        <label>Reason (optional)</label>
+        <textarea id="engReason" placeholder="e.g., Sprinkler impairment, system testing"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="dlgStartEng.close()">Cancel</button>
+        <button id="btnDoStartEng" class="btn ok">Start → Wait for Front Desk</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Start (Front Desk) -->
+  <dialog id="dlgStartFD">
+    <div class="modal">
+      <div class="head">Start Fire Watch (Front Desk)</div>
+      <div class="stack">
+        <label>Start Type</label>
+        <select id="fdStartType">
+          <option value="normal">Normal (needs Engineering ack)</option>
+          <option value="bypass">Bypass (Engineering not on site)</option>
+        </select>
+        <div id="fdBypassWrap" class="stack" style="display:none">
+          <label>Who put the panel on fire watch? <span class="muted">(required)</span></label>
+          <input id="fdPanelBy" type="text" placeholder="Name responsible for panel"/>
+        </div>
+        <label>Reason (optional)</label>
+        <textarea id="fdReason" placeholder="e.g., Alarm vendor onsite, device isolation"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="dlgStartFD.close()">Cancel</button>
+        <button id="btnDoStartFD" class="btn ok">Start</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Acknowledge (Front Desk) -->
+  <dialog id="dlgAck">
+    <div class="modal">
+      <div class="head">Acknowledge Fire Watch (Front Desk)</div>
+      <div class="stack">
+        <label>Front Desk Name</label>
+        <input id="ackName" type="text" placeholder="Your name"/>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="dlgAck.close()">Cancel</button>
+        <button id="btnDoAck" class="btn ok">Acknowledge</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- End -->
+  <dialog id="dlgEnd">
+    <div class="modal">
+      <div class="head">End Fire Watch</div>
+      <div class="stack">
+        <label>Your Name</label>
+        <input id="endName" type="text" placeholder="Your name"/>
+        <label>Notes (optional)</label>
+        <textarea id="endNotes" placeholder="Anything to add"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="dlgEnd.close()">Cancel</button>
+        <button id="btnDoEnd" class="btn bad">End Fire Watch</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    // --- Simple state machine (preview only) ---
+    const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
+    const pins = { ENG:'4156', FD:'6666' };
+
+    const state = {
+      status: S.IDLE,
+      current: null, // { startedAt, startedByRole, startedByName, reason, bypassUsed, panelByName, ackAt, ackByName }
+      user: null,    // { role, name }
+      logs: []       // { ts, action, role, name, details }
+    };
+
+    // --- Dom refs
+    const statusPill = document.getElementById('statusPill');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const userPill = document.getElementById('userPill');
+
+    const panelIdle = document.getElementById('panelIdle');
+    const panelPending = document.getElementById('panelPending');
+    const panelActive = document.getElementById('panelActive');
+
+    const btnLogin = document.getElementById('btnLogin');
+    const btnLogout = document.getElementById('btnLogout');
+    const btnStart = document.getElementById('btnStart');
+    const btnAcknowledge = document.getElementById('btnAcknowledge');
+    const btnCancel = document.getElementById('btnCancel');
+    const btnEnd = document.getElementById('btnEnd');
+    const btnExport = document.getElementById('btnExport');
+
+    const pendingBy = document.getElementById('pendingBy');
+    const pendingAt = document.getElementById('pendingAt');
+    const activeSince = document.getElementById('activeSince');
+    const activeBy = document.getElementById('activeBy');
+    const activeAck = document.getElementById('activeAck');
+
+    // dialogs
+    const dlgLogin = document.getElementById('dlgLogin');
+    const loginRole = document.getElementById('loginRole');
+    const loginPin = document.getElementById('loginPin');
+    const loginName = document.getElementById('loginName');
+    const btnDoLogin = document.getElementById('btnDoLogin');
+
+    const dlgStartEng = document.getElementById('dlgStartEng');
+    const engReason = document.getElementById('engReason');
+    const btnDoStartEng = document.getElementById('btnDoStartEng');
+
+    const dlgStartFD = document.getElementById('dlgStartFD');
+    const fdStartType = document.getElementById('fdStartType');
+    const fdBypassWrap = document.getElementById('fdBypassWrap');
+    const fdPanelBy = document.getElementById('fdPanelBy');
+    const fdReason = document.getElementById('fdReason');
+    const btnDoStartFD = document.getElementById('btnDoStartFD');
+
+    const dlgAck = document.getElementById('dlgAck');
+    const ackName = document.getElementById('ackName');
+    const btnDoAck = document.getElementById('btnDoAck');
+
+    const dlgEnd = document.getElementById('dlgEnd');
+    const endName = document.getElementById('endName');
+    const endNotes = document.getElementById('endNotes');
+    const btnDoEnd = document.getElementById('btnDoEnd');
+
+    const logTableBody = document.querySelector('#logTable tbody');
+
+    // --- Helpers ---
+    const tz = 'America/Toronto';
+    function nowStr(){ return new Date().toLocaleString('en-CA', { timeZone: tz }); }
+    function fmt(ts){ return new Date(ts).toLocaleString('en-CA', { timeZone: tz }); }
+    function setStatus(s){
+      statusDot.className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':s===S.ACTIVE?'s-active':'s-bad');
+      statusText.textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
+    }
+    function requireName(val){ return val && val.trim().length >= 2; }
+    function log(action, details=''){
+      state.logs.unshift({
+        ts: Date.now(), action,
+        role: state.user?.role || '-', name: state.user?.name || '-',
+        details
+      });
+      renderLogs();
+    }
+    function renderLogs(){
+      logTableBody.innerHTML = state.logs.map(l => `
+        <tr>
+          <td>${fmt(l.ts)}</td>
+          <td>${l.action}</td>
+          <td>${l.role}</td>
+          <td>${l.name}</td>
+          <td>${l.details || ''}</td>
+        </tr>`).join('');
+    }
+    function setUser(u){
+      state.user = u;
+      userPill.textContent = u ? `${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}` : 'Not signed in';
+      btnLogin.style.display = u ? 'none' : 'inline-block';
+      btnLogout.style.display = u ? 'inline-block' : 'none';
+      render();
+    }
+    function onlyOneSessionGuard(){
+      if(state.status===S.PENDING || state.status===S.ACTIVE){
+        alert('A Fire Watch is already in progress. End or cancel it first.');
+        return true;
+      }
+      return false;
+    }
+
+    function render(){
+      setStatus(state.status);
+      panelIdle.style.display = state.status===S.IDLE ? 'grid':'none';
+      panelPending.style.display = state.status===S.PENDING ? 'grid':'none';
+      panelActive.style.display = state.status===S.ACTIVE ? 'grid':'none';
+
+      // Show/Hide actions based on role
+      if(state.status===S.PENDING){
+        pendingBy.textContent = `${state.current.startedByRole==='ENG'?'Engineering':'Front Desk'} — ${state.current.startedByName}`;
+        pendingAt.textContent = fmt(state.current.startedAt);
+
+        // Only FD can acknowledge ENG-start, and ENG can acknowledge FD-start (normal path)
+        const waitingForFD = state.current.startedByRole === 'ENG';
+        btnAcknowledge.style.display =
+          (waitingForFD && state.user?.role==='FD') ||
+          (!waitingForFD && state.user?.role==='ENG')
+          ? 'inline-block':'none';
+      }
+
+      if(state.status===S.ACTIVE){
+        activeSince.textContent = fmt(state.current.startedAt);
+        activeBy.textContent = `${state.current.startedByRole==='ENG'?'Engineering':'Front Desk'} — ${state.current.startedByName}`;
+        activeAck.textContent = state.current.ackByName ? `Front Desk — ${state.current.ackByName}` :
+                                state.current.bypassUsed ? `Bypass used (Panel by: ${state.current.panelByName})` :
+                                '—';
+      }
+    }
+
+    // --- Events ---
+    btnLogin.onclick = () => dlgLogin.showModal();
+    btnLogout.onclick = () => { setUser(null); log('sign_out'); };
+
+    btnDoLogin.onclick = () => {
+      const role = loginRole.value;
+      const pin = loginPin.value.trim();
+      const name = loginName.value.trim();
+      if(!requireName(name)) return alert('Please enter your name.');
+      if(pin !== pins[role]) return alert('Wrong PIN.');
+      setUser({ role, name });
+      log('sign_in');
+      dlgLogin.close();
+      loginPin.value = '';
+    };
+
+    btnStart.onclick = () => {
+      if(!state.user) return alert('Sign in first.');
+      if(onlyOneSessionGuard()) return;
+      if(state.user.role==='ENG') dlgStartEng.showModal();
+      else dlgStartFD.showModal();
+    };
+
+    fdStartType.onchange = () => {
+      fdBypassWrap.style.display = fdStartType.value==='bypass' ? 'grid':'none';
+    };
+
+    btnDoStartEng.onclick = () => {
+      // ENG → Pending (wait FD)
+      state.status = S.PENDING;
+      state.current = {
+        startedAt: Date.now(),
+        startedByRole: 'ENG',
+        startedByName: state.user.name,
+        reason: engReason.value.trim() || null,
+        bypassUsed: false
+      };
+      log('start_request_eng', state.current.reason ? `Reason: ${state.current.reason}` : '');
+      engReason.value = '';
+      dlgStartEng.close();
+      render();
+    };
+
+    btnDoStartFD.onclick = () => {
+      const type = fdStartType.value;
+      const reason = fdReason.value.trim() || null;
+      if(type==='bypass'){
+        const panelBy = fdPanelBy.value.trim();
+        if(!requireName(panelBy)) return alert('Enter who put the panel on fire watch.');
+        state.status = S.ACTIVE;
+        state.current = {
+          startedAt: Date.now(),
+          startedByRole: 'FD',
+          startedByName: state.user.name,
+          reason, bypassUsed: true, panelByName: panelBy
+        };
+        log('start_fd_bypass', `Panel by: ${panelBy}` + (reason?` — Reason: ${reason}`:''));
+      }else{
+        // FD normal → Pending (wait ENG)
+        state.status = S.PENDING;
+        state.current = {
+          startedAt: Date.now(),
+          startedByRole: 'FD',
+          startedByName: state.user.name,
+          reason, bypassUsed: false
+        };
+        log('start_request_fd', reason ? `Reason: ${reason}` : '');
+      }
+      fdPanelBy.value = '';
+      fdReason.value = '';
+      dlgStartFD.close();
+      render();
+    };
+
+    btnCancel.onclick = () => {
+      if(!state.user) return alert('Sign in first.');
+      if(state.status!==S.PENDING) return;
+      log('cancel_request', `Cancelled by ${state.user.role}`);
+      state.status = S.IDLE;
+      state.current = null;
+      render();
+    };
+
+    btnAcknowledge.onclick = () => {
+      if(!state.user) return alert('Sign in first.');
+      dlgAck.showModal();
+    };
+
+    btnDoAck.onclick = () => {
+      const n = ackName.value.trim();
+      if(!requireName(n)) return alert('Enter your name.');
+      if(state.status!==S.PENDING) return dlgAck.close();
+      state.status = S.ACTIVE;
+      state.current.ackAt = Date.now();
+      state.current.ackByName = n;
+      log('acknowledge');
+      ackName.value = '';
+      dlgAck.close();
+      render();
+    };
+
+    btnEnd.onclick = () => {
+      if(!state.user) return alert('Sign in first.');
+      dlgEnd.showModal();
+    };
+
+    btnDoEnd.onclick = () => {
+      const n = endName.value.trim();
+      if(!requireName(n)) return alert('Enter your name.');
+      const notes = endNotes.value.trim();
+      log('end_fire_watch', notes ? `Notes: ${notes}`:'');
+      state.status = S.IDLE;
+      state.current = null;
+      endName.value = '';
+      endNotes.value = '';
+      dlgEnd.close();
+      render();
+    };
+
+    btnExport.onclick = () => {
+      const rows = [['Time','Action','Role','Name','Details']];
+      state.logs.slice().reverse().forEach(l=>{
+        rows.push([fmt(l.ts), l.action, l.role, l.name, (l.details||'').replace(/\n/g,' ')]);
+      });
+      const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `firewatch_log_${Date.now()}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    // initial
+    render();
+  </script>
+</body>
+</html>
