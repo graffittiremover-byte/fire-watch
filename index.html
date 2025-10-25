@@ -8,7 +8,7 @@
   <!-- Force newest build each deploy -->
   <script>
   (function () {
-    const APP_VERSION = "2025-10-25-8";  /* bump on each commit */
+    const APP_VERSION = "2025-10-25-9";  /* bump on each commit */
     const u = new URL(location.href);
     if (u.searchParams.get("v") !== APP_VERSION) {
       u.searchParams.set("v", APP_VERSION);
@@ -54,7 +54,7 @@
     .btn:hover{filter:brightness(1.05)}
     .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7); border-color:#0284c7; color:white}
     .btn.ok{background:linear-gradient(180deg,#16a34a,#15803d); border-color:#15803d; color:white}
-    .btn.warn{background:linear-gradient(180deg,#f59e0b,#d97706); border-color:#d97706); color:black}
+    .btn.warn{background:linear-gradient(180deg,#f59e0b,#d97706); border-color:#d97706; color:black}
     .btn.bad{background:linear-gradient(180deg,#dc2626,#b91c1c); border-color:#b91c1c; color:white}
     .btn.ghost{background:transparent}
     .rowgrid{display:grid; gap:10px; grid-template-columns:1fr 1fr}
@@ -133,7 +133,7 @@
       <section class="card stack">
         <div class="h">
           <div class="title">Event Log (All activity)</div>
-        <div class="toolbar">
+          <div class="toolbar">
             <button id="btnExport" class="btn ghost" onclick="exportEvents()">Export CSV</button>
             <span class="muted">Realtime + DB</span>
           </div>
@@ -150,8 +150,136 @@
     </div>
   </main>
 
-  <!-- Modals (login/start/ack/end/history) — unchanged for brevity -->
-  <!-- ... (same modals as your last version) ... -->
+  <!-- Login Modal -->
+  <dialog id="dlgLogin">
+    <div class="modal">
+      <div class="head">Sign in</div>
+      <div class="stack">
+        <label>Role</label>
+        <select id="loginRole">
+          <option value="ENG">Engineering</option>
+          <option value="FD">Front Desk</option>
+        </select>
+        <label>PIN</label>
+        <input id="loginPin" type="password" placeholder="Enter PIN"/>
+        <label>Your Name</label>
+        <input id="loginName" type="text" placeholder="First & last name"/>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgLogin').close()">Cancel</button>
+        <button id="btnDoLogin" class="btn primary" onclick="handleDoLogin()">Sign in</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Start (Engineering) -->
+  <dialog id="dlgStartEng">
+    <div class="modal">
+      <div class="head">Start Fire Watch (Engineering)</div>
+      <div class="stack">
+        <label>Reason (optional)</label>
+        <textarea id="engReason" placeholder="e.g., Sprinkler impairment, system testing"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgStartEng').close()">Cancel</button>
+        <button id="btnDoStartEng" class="btn ok" onclick="handleDoStartEng()">Start → Wait for Front Desk</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Start (Front Desk) -->
+  <dialog id="dlgStartFD">
+    <div class="modal">
+      <div class="head">Start Fire Watch (Front Desk)</div>
+      <div class="stack">
+        <label>Start Type</label>
+        <select id="fdStartType" onchange="handleFDTypeChange()">
+          <option value="normal">Normal (needs Engineering ack)</option>
+          <option value="bypass">Bypass (Engineering not on site)</option>
+        </select>
+        <div id="fdBypassWrap" class="stack" style="display:none">
+          <label>Who put the panel on fire watch? <span class="muted">(required)</span></label>
+          <input id="fdPanelBy" type="text" placeholder="Name responsible for panel"/>
+        </div>
+        <label>Reason (optional)</label>
+        <textarea id="fdReason" placeholder="e.g., Alarm vendor onsite, device isolation"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgStartFD').close()">Cancel</button>
+        <button id="btnDoStartFD" class="btn ok" onclick="handleDoStartFD()">Start</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Acknowledge (Front Desk) -->
+  <dialog id="dlgAck">
+    <div class="modal">
+      <div class="head">Acknowledge Fire Watch (Front Desk)</div>
+      <div class="stack">
+        <label>Front Desk Name</label>
+        <input id="ackName" type="text" placeholder="Your name"/>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgAck').close()">Cancel</button>
+        <button id="btnDoAck" class="btn ok" onclick="handleDoAck()">Acknowledge</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- End -->
+  <dialog id="dlgEnd">
+    <div class="modal">
+      <div class="head">End Fire Watch</div>
+      <div class="stack">
+        <label>Your Name</label>
+        <input id="endName" type="text" placeholder="Your name"/>
+        <label>Notes (optional)</label>
+        <textarea id="endNotes" placeholder="Anything to add"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgEnd').close()">Cancel</button>
+        <button id="btnDoEnd" class="btn bad" onclick="handleDoEnd()">End Fire Watch</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- History -->
+  <dialog id="dlgHistory">
+    <div class="modal">
+      <div class="head">Fire Watch History</div>
+      <div class="grid3">
+        <input id="histSearch" type="text" placeholder="Search name / reason / notes" />
+        <select id="histStatus">
+          <option value="">All statuses</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="PENDING_ACK">PENDING_ACK</option>
+          <option value="ENDED">ENDED</option>
+        </select>
+        <div class="toolbar">
+          <button class="btn" onclick="loadHistory()">Refresh</button>
+          <button class="btn ghost" onclick="exportHistory()">Export CSV</button>
+        </div>
+      </div>
+      <div style="overflow:auto; max-height:60vh; margin-top:10px; border:1px solid rgba(148,163,184,.12); border-radius:12px;">
+        <table id="histTable">
+          <thead>
+            <tr>
+              <th class="nowrap">Started</th>
+              <th>Status</th>
+              <th>Started by</th>
+              <th>Acknowledged</th>
+              <th>Ended</th>
+              <th>Reason / Notes</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgHistory').close()">Close</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -214,7 +342,7 @@
     async function fetchEvents(){
       const { data, error } = await sb.from('events')
         .select('*')
-        .order('id',{ascending:false})   // <— order by id (robust)
+        .order('id',{ascending:false})   // robust ordering
         .limit(200);
       if(error){ console.error('fetchEvents', error); return; }
       state.events = data || [];
@@ -426,7 +554,7 @@
     // init
     (async () => {
       // probe write (helps confirm events table accepts inserts)
-      logEvent('page_open', 'v=2025-10-25-8');
+      logEvent('page_open', 'v=2025-10-25-9');
 
       const row = await fetchCurrent(); applyRow(row);
       await fetchEvents();
