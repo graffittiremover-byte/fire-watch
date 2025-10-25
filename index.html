@@ -5,10 +5,7 @@
   <title>Fire Watch</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50%25' x='50%25' dy='.35em' text-anchor='middle'%3E🔥%3C/text%3E%3C/svg%3E">
-  <script>
-    // v4 – show which file threw if a parse error happens
-    window.addEventListener('error', (e) => console.error('Global error:', e.message, 'at', e.filename, e.lineno+':'+e.colno));
-  </script>
+  <script>window.addEventListener('error',e=>console.error('Global error:',e.message,'at',e.filename,e.lineno+':'+e.colno));</script>
   <style>
     :root{ --bg1:#0b1020; --bg2:#0f172a; --card:#111827; --muted:#1f2937;
       --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --ink:#e5e7eb; --ink2:#94a3b8;
@@ -33,7 +30,7 @@
     .s-idle{background:var(--muted)} .s-pending{background:var(--warn)} .s-active{background:var(--ok)}
     .stack{display:grid;gap:12px}
     label{font-size:12px;color:var(--ink2)}
-    input[type="text"],input[type="password"],select,textarea,input[type="datetime-local"]{
+    input[type="text"],input[type="password"],select,textarea,input[type="date"],input[type="time"],input[type="number"]{
       width:100%;background:#0b1020;color:var(--ink);border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:10px 12px;outline:none}
     textarea{min-height:72px;resize:vertical}
     .btn{appearance:none;border:none;border-radius:14px;padding:8px 12px;font-weight:700;cursor:pointer;
@@ -61,6 +58,9 @@
     .grid3{display:grid;gap:8px;grid-template-columns:1fr 1fr 1fr}
     .nowrap{white-space:nowrap}
     .actions-col{white-space:nowrap}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.2);background:#0b1020;cursor:pointer}
+    .chip:hover{filter:brightness(1.2)}
   </style>
 </head>
 <body class="theme-idle">
@@ -166,8 +166,17 @@
   <dialog id="dlgStartEng"><div class="modal">
     <div class="head">Start Fire Watch (Engineering)</div>
     <div class="stack">
-      <label>Fire Watch to (local time)</label>
-      <input id="engUntil" type="datetime-local" />
+      <label>Fire Watch to</label>
+      <div class="rowgrid">
+        <div><input id="engDate" type="date" /></div>
+        <div><input id="engTime" type="time" /></div>
+      </div>
+      <div class="chips">
+        <span class="chip" data-q="eng" data-min="30">+30m</span>
+        <span class="chip" data-q="eng" data-min="60">+1h</span>
+        <span class="chip" data-q="eng" data-min="120">+2h</span>
+        <span class="chip" data-q="eng" data-eod="1">EOD</span>
+      </div>
       <label>Reason (optional)</label>
       <textarea id="engReason" placeholder="e.g., Sprinkler impairment, system testing"></textarea>
     </div>
@@ -187,8 +196,17 @@
         <label>Who put the panel on fire watch? <span class="muted">(required)</span></label>
         <input id="fdPanelBy" type="text" placeholder="Name responsible for panel"/>
       </div>
-      <label>Fire Watch to (local time)</label>
-      <input id="fdUntil" type="datetime-local" />
+      <label>Fire Watch to</label>
+      <div class="rowgrid">
+        <div><input id="fdDate" type="date" /></div>
+        <div><input id="fdTime" type="time" /></div>
+      </div>
+      <div class="chips">
+        <span class="chip" data-q="fd" data-min="30">+30m</span>
+        <span class="chip" data-q="fd" data-min="60">+1h</span>
+        <span class="chip" data-q="fd" data-min="120">+2h</span>
+        <span class="chip" data-q="fd" data-eod="1">EOD</span>
+      </div>
       <label>Reason (optional)</label>
       <textarea id="fdReason" placeholder="e.g., Alarm vendor onsite, device isolation"></textarea>
     </div>
@@ -202,11 +220,19 @@
   <dialog id="dlgExtend"><div class="modal">
     <div class="head">Extend Fire Watch</div>
     <div class="stack">
-      <label>Extend by minutes (quick)</label>
-      <input id="extMinutes" type="number" min="1" step="1" placeholder="e.g., 30" />
-      <div class="muted">— or —</div>
-      <label>Set new “Fire Watch to” time (local)</label>
-      <input id="extUntil" type="datetime-local" />
+      <label>Quick add</label>
+      <div class="chips">
+        <span class="chip" data-q="ext" data-min="15">+15m</span>
+        <span class="chip" data-q="ext" data-min="30">+30m</span>
+        <span class="chip" data-q="ext" data-min="60">+1h</span>
+        <span class="chip" data-q="ext" data-min="120">+2h</span>
+        <span class="chip" data-q="ext" data-eod="1">EOD</span>
+      </div>
+      <label>Set new time (calendar + clock)</label>
+      <div class="rowgrid">
+        <div><input id="extDate" type="date" /></div>
+        <div><input id="extTime" type="time" /></div>
+      </div>
       <label>Your Name</label>
       <input id="extName" type="text" placeholder="Your name"/>
     </div>
@@ -285,9 +311,9 @@
   </div></dialog>
 
   <!-- External libs (defer + cache-bust) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=4"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js?v=4"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js?v=4"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=5"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js?v=5"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js?v=5"></script>
 
   <script>
     const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
@@ -301,11 +327,42 @@
     const requireName = v => v && v.trim().length>=2;
     const $ = id => document.getElementById(id);
 
-    function toISOFromLocalInput(val){
-      // val like "2025-10-25T23:15" (local). Convert to ISO tz-aware.
-      if(!val) return null;
-      const d = new Date(val.replace(' ', 'T'));
-      return isNaN(d) ? null : d.toISOString();
+    /* ---------- date/time helpers ---------- */
+    const pad = n => String(n).padStart(2,'0');
+    function setInputsFromDate(prefix, d){
+      $(prefix+'Date').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      $(prefix+'Time').value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    function toISOFromInputs(prefix){
+      const ds = $(prefix+'Date').value, ts = $(prefix+'Time').value;
+      if(!ds || !ts) return null;
+      const [y,m,dd] = ds.split('-').map(Number);
+      const [hh,mm]  = ts.split(':').map(Number);
+      const d = new Date(y, m-1, dd, hh, mm);
+      return d.toISOString();
+    }
+    function quickSet(prefix, opts){
+      let base = new Date();
+      if(prefix==='ext' && state.current?.planned_until){
+        base = new Date(state.current.planned_until);
+      }
+      if(opts.eod){
+        base.setHours(23,59,0,0);
+      }else if(opts.min){
+        base.setMinutes(base.getMinutes()+opts.min);
+      }
+      setInputsFromDate(prefix, base);
+    }
+    function attachChips(){
+      document.querySelectorAll('.chip').forEach(ch=>{
+        ch.addEventListener('click',()=>{
+          const p = ch.dataset.q;
+          if(ch.dataset.eod) quickSet(p,{eod:true});
+          else quickSet(p,{min:parseInt(ch.dataset.min,10)});
+        });
+      });
+      // sensible defaults when opening dialogs
+      ['eng','fd','ext'].forEach(p=>setInputsFromDate(p,new Date()));
     }
 
     function setThemeForStatus(s){
@@ -429,19 +486,14 @@
       renderHistory();
     }
 
-    function minsPretty(m){
-      if(!m && m!==0) return '—';
-      const h = Math.floor(m/60), mm = m%60;
-      return h?`${h}h ${mm}m`:`${mm}m`;
-    }
+    function minsPretty(m){ if(!m && m!==0) return '—'; const h=Math.floor(m/60), mm=m%60; return h?`${h}h ${mm}m`:`${mm}m`; }
 
     function renderHistory(){
       const tbody = document.querySelector('#histTable tbody');
       const rows = state.history.map(r=>{
         const started = fmt(r.started_at);
         const planned = fmt(r.planned_until);
-        const duration = r.duration_minutes!=null ? minsPretty(r.duration_minutes) :
-          (r.status==='ACTIVE' ? '—' : '—');
+        const duration = r.duration_minutes!=null ? minsPretty(r.duration_minutes) : (r.status==='ACTIVE'?'—':'—');
         const startedBy = `${r.started_by_role||'—'} — ${r.started_by_name||'—'}`;
         const ack = r.bypass_used ? `Bypass ✓ (Panel by: ${r.panel_by_name||'—'})`
                                   : (r.fd_ack ? `FD: ${r.fd_ack_by_name||'—'} @ ${fmt(r.fd_ack_at)}` : '—');
@@ -456,9 +508,7 @@
           <td>${escapeHtml(ack)}</td>
           <td>${escapeHtml(ended)}</td>
           <td>${escapeHtml(rn||'')}</td>
-          <td class="actions-col">
-            <button class="btn sm hist-pdf" data-id="${escapeHtml(r.id)}">PDF</button>
-          </td>
+          <td class="actions-col"><button class="btn sm hist-pdf" data-id="${escapeHtml(r.id)}">PDF</button></td>
         </tr>`;
       }).join('');
       tbody.innerHTML = rows || `<tr><td colspan="9" class="muted">No records found.</td></tr>`;
@@ -497,7 +547,6 @@
       doc.text(`Started: ${startedAt || '—'}`, 40, 86);
       doc.text(`Planned until: ${planned || '—'}`, 40, 102);
       if (endedAt) doc.text(`Ended: ${endedAt}`, 40, 118);
-
       const lines = [
         ['Status', r.status || '—'],
         ['Duration', duration],
@@ -509,14 +558,7 @@
         ['Reason', r.reason || '—'],
         ['Notes', r.notes || '—'],
       ];
-      doc.autoTable({
-        head: [['Field','Value']],
-        body: lines,
-        startY: 140,
-        styles: { fontSize: 11, cellPadding: 6 },
-        headStyles: { fillColor: [20,25,45] },
-        columnStyles: { 0:{cellWidth:150} }
-      });
+      doc.autoTable({ head:[['Field','Value']], body:lines, startY:140, styles:{fontSize:11,cellPadding:6}, headStyles:{fillColor:[20,25,45]}, columnStyles:{0:{cellWidth:150}} });
       const url = location.href.split('?')[0];
       const when = new Date().toLocaleString('en-CA',{ timeZone: tz });
       doc.setFontSize(9);
@@ -554,10 +596,10 @@
     function handleFDTypeChange(){ $('fdBypassWrap').style.display = $('fdStartType').value==='bypass'?'grid':'none'; }
 
     async function handleDoStartEng(){
-      const untilISO = toISOFromLocalInput($('engUntil').value);
-      if(!untilISO) return alert('Please set "Fire Watch to" time.');
+      const untilISO = toISOFromInputs('eng');
+      if(!untilISO) return alert('Pick a date and time (or use a quick button).');
       const reason = ($('engReason').value.trim()||null);
-      $('engReason').value=''; $('engUntil').value=''; $('dlgStartEng').close();
+      $('engReason').value=''; $('dlgStartEng').close();
       const { data, error } = await sb.from('fire_watches').insert({
         status:'PENDING_ACK', started_by_role:'ENG', started_by_name:state.user.name, reason,
         planned_until: untilISO
@@ -567,10 +609,10 @@
     }
 
     async function handleDoStartFD(){
-      const type=$('fdStartType').value; const untilISO = toISOFromLocalInput($('fdUntil').value);
-      if(!untilISO) return alert('Please set "Fire Watch to" time.');
+      const type=$('fdStartType').value; const untilISO = toISOFromInputs('fd');
+      if(!untilISO) return alert('Pick a date and time (or use a quick button).');
       const reason=($('fdReason').value.trim()||null);
-      $('fdReason').value=''; $('fdUntil').value=''; $('dlgStartFD').close();
+      $('fdReason').value=''; $('dlgStartFD').close();
 
       if(type==='bypass'){
         const panelBy = $('fdPanelBy').value.trim();
@@ -604,24 +646,19 @@
       logEvent('acknowledge', `by=${n}`);
     }
 
-    function handleExtendOpen(){ if(!state.user) return alert('Sign in first.'); $('dlgExtend').showModal(); }
+    function handleExtendOpen(){ if(!state.user) return alert('Sign in first.'); 
+      // prefill with current planned_until if present
+      const base = state.current?.planned_until ? new Date(state.current.planned_until) : new Date();
+      setInputsFromDate('ext', base);
+      $('dlgExtend').showModal();
+    }
     async function handleDoExtend(){
       if(!state.current) return;
       const who = ($('extName').value||'').trim(); if(!requireName(who)) return alert('Enter your name.');
-      const mins = parseInt($('extMinutes').value || '0', 10);
-      const newUntilVal = $('extUntil').value;
-      $('extMinutes').value=''; $('extUntil').value=''; $('extName').value=''; $('dlgExtend').close();
 
-      let newUntilISO = null;
-      if (mins > 0) {
-        const base = state.current.planned_until ? new Date(state.current.planned_until) : new Date();
-        base.setMinutes(base.getMinutes() + mins);
-        newUntilISO = base.toISOString();
-      } else if (newUntilVal) {
-        newUntilISO = toISOFromLocalInput(newUntilVal);
-      } else {
-        return alert('Enter minutes or choose a new time.');
-      }
+      // use new date/time if provided; else if only quick chips were used, fields are already set
+      const newUntilISO = toISOFromInputs('ext');
+      if(!newUntilISO) return alert('Pick a date and time (or use a quick button).');
 
       const nextCount = (state.current.extensions_count ?? 0) + 1;
       const { error } = await sb.from('fire_watches').update({
@@ -669,19 +706,20 @@
     function sanityCheckIDs(){
       const ids=['dlgLogin','dlgStartEng','dlgStartFD','dlgAck','dlgEnd','dlgExtend','dlgHistory',
         'btnLogin','btnLogout','btnStart','btnAcknowledge','btnCancel','btnEnd','btnExtend','btnOpenHistory',
-        'btnDoLogin','btnDoStartEng','btnDoStartFD','btnDoAck','btnDoEnd','btnDoExtend',
-        'btnCancelLogin','btnCancelStartEng','btnCancelStartFD','btnCancelAck','btnCancelEnd','btnCancelExtend',
+        'btnDoLogin','btnDoStartEng','btnDoStartFD','btnDoAck','btnDoExtend','btnDoEnd',
+        'btnCancelLogin','btnCancelStartEng','btnCancelStartFD','btnCancelAck','btnCancelExtend','btnCancelEnd',
         'btnHistRefresh','btnHistExport','btnHistPDFAll','btnCloseHistory','btnExport','histTable',
-        'engUntil','fdUntil','extMinutes','extUntil','extName'];
+        'engDate','engTime','fdDate','fdTime','extDate','extTime','extName'];
       const missing = ids.filter(id => !$(id));
       if(missing.length) console.warn('Missing elements with these IDs:', missing);
     }
 
-    // Boot after libs loaded
-    window.addEventListener('load', () => {
+    /* Boot */
+    window.addEventListener('load', async () => {
       if (!window.supabase) { alert('Failed to load Supabase library'); return; }
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+      // wire buttons
       $('btnLogin').onclick = handleLoginOpen;
       $('btnLogout').onclick = handleLogout;
       $('btnStart').onclick = handleStart;
@@ -717,7 +755,7 @@
 
       $('btnExport').onclick = exportEvents;
 
-      // Delegate History PDF buttons
+      // Delegation for History PDF buttons
       $('histTable').addEventListener('click', async (e) => {
         const btn = e.target.closest('button.hist-pdf');
         if (!btn) return;
@@ -728,13 +766,14 @@
       });
 
       sanityCheckIDs();
+      attachChips();
 
+      // backend check + initial load
       (async () => {
         const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
         $('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
         if (error) console.error(error);
       })();
-
       (async () => {
         const row = await fetchCurrent(); applyRow(row);
         await fetchEvents();
@@ -748,7 +787,7 @@
   <!-- Service worker -->
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js?v=4').catch(console.error);
+      navigator.serviceWorker.register('./sw.js?v=5').catch(console.error);
     }
   </script>
 </body>
