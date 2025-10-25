@@ -5,33 +5,23 @@
   <title>Fire Watch – Preview</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    :root{
-      --bg:#0f172a; --card:#111827; --muted:#1f2937;
-      --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --ink:#e5e7eb; --ink2:#94a3b8; --accent:#38bdf8;
-      --pill:#0b1224;
-    }
+    :root{ --bg:#0f172a; --card:#111827; --muted:#1f2937;
+      --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --ink:#e5e7eb; --ink2:#94a3b8; --pill:#0b1224; }
     *{box-sizing:border-box}
-    body{
-      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      background:linear-gradient(180deg,#0b1020, #0f172a 45%, #0b1020);
-      color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
-    }
+    body{ margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(180deg,#0b1020,#0f172a 45%,#0b1020);
+      color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
     .app{width:100%; max-width:980px; display:grid; gap:16px}
     .row{display:grid; gap:16px}
-    @media (min-width:900px){ .row{grid-template-columns: 1.2fr .8fr} }
-    .card{
-      background:linear-gradient(180deg, #12192f, #0f152a);
-      border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:20px; box-shadow:0 10px 35px rgba(0,0,0,.35)
-    }
+    @media (min-width:900px){ .row{grid-template-columns:1.2fr .8fr} }
+    .card{ background:linear-gradient(180deg,#12192f,#0f152a);
+      border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:20px; box-shadow:0 10px 35px rgba(0,0,0,.35) }
     .h{display:flex; align-items:center; justify-content:space-between; gap:12px}
     .title{font-size:18px; font-weight:700; letter-spacing:.2px}
     .pill{font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.2); background:var(--pill); color:var(--ink2)}
     .status{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px; border:1px solid rgba(148,163,184,.2)}
     .dot{width:10px; height:10px; border-radius:50%}
-    .s-idle{background:var(--muted)}
-    .s-pending{background:var(--warn)}
-    .s-active{background:var(--ok)}
-    .s-bad{background:var(--bad)}
+    .s-idle{background:var(--muted)} .s-pending{background:var(--warn)} .s-active{background:var(--ok)} .s-bad{background:var(--bad)}
     .stack{display:grid; gap:12px}
     label{font-size:12px; color:var(--ink2)}
     input[type="text"], input[type="password"], select, textarea{
@@ -39,11 +29,8 @@
       border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:10px 12px; outline:none;
     }
     textarea{min-height:72px; resize:vertical}
-    .btn{
-      appearance:none; border:none; border-radius:14px; padding:12px 16px; font-weight:700; cursor:pointer;
-      background:linear-gradient(180deg,#1f2937,#111827); color:var(--ink);
-      border:1px solid rgba(148,163,184,.2);
-    }
+    .btn{ appearance:none; border:none; border-radius:14px; padding:12px 16px; font-weight:700; cursor:pointer;
+      background:linear-gradient(180deg,#1f2937,#111827); color:var(--ink); border:1px solid rgba(148,163,184,.2); }
     .btn:hover{filter:brightness(1.05)}
     .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7); border-color:#0284c7; color:white}
     .btn.ok{background:linear-gradient(180deg,#16a34a,#15803d); border-color:#15803d; color:white}
@@ -56,16 +43,11 @@
     th,td{padding:10px; border-bottom:1px solid rgba(148,163,184,.12); text-align:left}
     th{color:#a8b3cf; font-weight:600}
     .toolbar{display:flex; gap:8px; flex-wrap:wrap}
-    dialog{
-      border:none; border-radius:16px; padding:0; background:transparent;
-      max-width:520px; width:calc(100% - 32px)
-    }
+    dialog{ border:none; border-radius:16px; padding:0; background:transparent; max-width:520px; width:calc(100% - 32px) }
     .modal{background:linear-gradient(180deg,#12192f,#0f152a); border:1px solid rgba(148,163,184,.15); border-radius:16px; padding:18px}
     .modal .head{font-weight:800; margin-bottom:6px}
     .modal .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
     .flex{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-    .right{justify-content:flex-end}
-    small.code{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; padding:2px 6px; border-radius:8px; background:#0b1020; border:1px solid rgba(148,163,184,.2); color:#a8b3cf}
   </style>
 </head>
 <body>
@@ -141,7 +123,7 @@
             <tbody></tbody>
           </table>
         </div>
-        <div class="muted">PINs: <small class="code">Engineering 4156</small> · <small class="code">Front Desk 6666</small></div>
+        <div class="muted">PINs: <small>Engineering 4156</small> · <small>Front Desk 6666</small></div>
       </section>
     </div>
   </main>
@@ -239,24 +221,16 @@
     </div>
   </dialog>
 
-  <!-- App JS (preview-only state machine) -->
+  <!-- Preview-only app logic -->
   <script>
     const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
     const pins = { ENG:'4156', FD:'6666' };
 
-    const state = {
-      status: S.IDLE,
-      current: null,
-      user: null,
-      logs: []
-    };
+    const state = { status:S.IDLE, current:null, user:null, logs:[] };
 
-    // DOM refs
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
     const userPill = document.getElementById('userPill');
-    const backendPill = document.getElementById('backendPill');
-
     const panelIdle = document.getElementById('panelIdle');
     const panelPending = document.getElementById('panelPending');
     const panelActive = document.getElementById('panelActive');
@@ -275,7 +249,6 @@
     const activeBy = document.getElementById('activeBy');
     const activeAck = document.getElementById('activeAck');
 
-    // dialogs
     const dlgLogin = document.getElementById('dlgLogin');
     const loginRole = document.getElementById('loginRole');
     const loginPin = document.getElementById('loginPin');
@@ -305,214 +278,123 @@
     const logTableBody = document.querySelector('#logTable tbody');
 
     const tz = 'America/Toronto';
-    function fmt(ts){ return new Date(ts).toLocaleString('en-CA', { timeZone: tz }); }
-    function setStatus(s){
+    const fmt = ts => new Date(ts).toLocaleString('en-CA',{timeZone:tz});
+    const setStatus = s => {
       statusDot.className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
       statusText.textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
-    }
-    function requireName(val){ return val && val.trim().length >= 2; }
-    function log(action, details=''){
-      state.logs.unshift({ ts: Date.now(), action, role: state.user?.role || '-', name: state.user?.name || '-', details });
-      renderLogs();
-    }
-    function renderLogs(){
-      logTableBody.innerHTML = state.logs.map(l => `
-        <tr>
-          <td>${fmt(l.ts)}</td>
-          <td>${l.action}</td>
-          <td>${l.role}</td>
-          <td>${l.name}</td>
-          <td>${l.details || ''}</td>
-        </tr>`).join('');
-    }
-    function setUser(u){
-      state.user = u;
-      userPill.textContent = u ? `${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}` : 'Not signed in';
-      btnLogin.style.display = u ? 'none' : 'inline-block';
-      btnLogout.style.display = u ? 'inline-block' : 'none';
+    };
+    const requireName = v => v && v.trim().length>=2;
+    const log = (action,details='')=>{
+      state.logs.unshift({ts:Date.now(),action,role:state.user?.role||'-',name:state.user?.name||'-',details});
+      logTableBody.innerHTML = state.logs.map(l=>`
+        <tr><td>${fmt(l.ts)}</td><td>${l.action}</td><td>${l.role}</td><td>${l.name}</td><td>${l.details||''}</td></tr>
+      `).join('');
+    };
+    const setUser = u => {
+      state.user=u;
+      userPill.textContent = u?`${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}`:'Not signed in';
+      btnLogin.style.display = u?'none':'inline-block';
+      btnLogout.style.display = u?'inline-block':'none';
       render();
-    }
-    function onlyOneSessionGuard(){
-      if(state.status===S.PENDING || state.status===S.ACTIVE){
-        alert('A Fire Watch is already in progress. End or cancel it first.');
-        return true;
-      }
-      return false;
-    }
+    };
+    const guardOne = ()=> (state.status!==S.IDLE)&&alert('A Fire Watch is already in progress. End or cancel it first.');
+
     function render(){
       setStatus(state.status);
-      panelIdle.style.display = state.status===S.IDLE ? 'grid':'none';
-      panelPending.style.display = state.status===S.PENDING ? 'grid':'none';
-      panelActive.style.display = state.status===S.ACTIVE ? 'grid':'none';
+      panelIdle.style.display = state.status===S.IDLE?'grid':'none';
+      panelPending.style.display = state.status===S.PENDING?'grid':'none';
+      panelActive.style.display = state.status===S.ACTIVE?'grid':'none';
 
       if(state.status===S.PENDING){
         pendingBy.textContent = `${state.current.startedByRole==='ENG'?'Engineering':'Front Desk'} — ${state.current.startedByName}`;
         pendingAt.textContent = fmt(state.current.startedAt);
-        const waitingForFD = state.current.startedByRole === 'ENG';
+        const waitingForFD = state.current.startedByRole==='ENG';
         btnAcknowledge.style.display =
           (waitingForFD && state.user?.role==='FD') ||
-          (!waitingForFD && state.user?.role==='ENG')
-          ? 'inline-block':'none';
+          (!waitingForFD && state.user?.role==='ENG') ? 'inline-block':'none';
       }
-
       if(state.status===S.ACTIVE){
         activeSince.textContent = fmt(state.current.startedAt);
         activeBy.textContent = `${state.current.startedByRole==='ENG'?'Engineering':'Front Desk'} — ${state.current.startedByName}`;
         activeAck.textContent = state.current.ackByName ? `Front Desk — ${state.current.ackByName}` :
-                                state.current.bypassUsed ? `Bypass used (Panel by: ${state.current.panelByName})` :
-                                '—';
+          state.current.bypassUsed ? `Bypass used (Panel by: ${state.current.panelByName})` : '—';
       }
     }
 
     // Events
-    btnLogin.onclick = () => dlgLogin.showModal();
-    btnLogout.onclick = () => { setUser(null); log('sign_out'); };
-
-    btnDoLogin.onclick = () => {
-      const role = loginRole.value;
-      const pin = loginPin.value.trim();
-      const name = loginName.value.trim();
+    btnLogin.onclick = ()=> dlgLogin.showModal();
+    btnLogout.onclick = ()=>{ setUser(null); log('sign_out'); };
+    btnDoLogin.onclick = ()=>{
+      const role=loginRole.value, pin=loginPin.value.trim(), name=loginName.value.trim();
       if(!requireName(name)) return alert('Please enter your name.');
-      if(pin !== pins[role]) return alert('Wrong PIN.');
-      setUser({ role, name });
-      log('sign_in');
-      dlgLogin.close();
-      loginPin.value = '';
+      if(pin!=='4156' && pin!=='6666') return alert('Wrong PIN.');
+      if((role==='ENG' && pin!=='4156')||(role==='FD' && pin!=='6666')) return alert('PIN does not match role.');
+      setUser({role,name}); log('sign_in'); dlgLogin.close(); loginPin.value='';
     };
 
-    btnStart.onclick = () => {
+    btnStart.onclick = ()=>{
       if(!state.user) return alert('Sign in first.');
-      if(onlyOneSessionGuard()) return;
-      if(state.user.role==='ENG') dlgStartEng.showModal();
-      else dlgStartFD.showModal();
+      if(state.status!==S.IDLE) return guardOne();
+      if(state.user.role==='ENG') dlgStartEng.showModal(); else dlgStartFD.showModal();
     };
 
-    fdStartType.onchange = () => {
-      fdBypassWrap.style.display = fdStartType.value==='bypass' ? 'grid':'none';
+    fdStartType.onchange = ()=>{ fdBypassWrap.style.display = fdStartType.value==='bypass'?'grid':'none'; };
+
+    btnDoStartEng.onclick = ()=>{
+      state.status=S.PENDING;
+      state.current={startedAt:Date.now(), startedByRole:'ENG', startedByName:state.user.name, reason:engReason.value.trim()||null, bypassUsed:false};
+      log('start_request_eng', state.current.reason?`Reason: ${state.current.reason}`:''); engReason.value=''; dlgStartEng.close(); render();
     };
 
-    btnDoStartEng.onclick = () => {
-      state.status = S.PENDING;
-      state.current = {
-        startedAt: Date.now(),
-        startedByRole: 'ENG',
-        startedByName: state.user.name,
-        reason: engReason.value.trim() || null,
-        bypassUsed: false
-      };
-      log('start_request_eng', state.current.reason ? `Reason: ${state.current.reason}` : '');
-      engReason.value = '';
-      dlgStartEng.close();
-      render();
-    };
-
-    btnDoStartFD.onclick = () => {
-      const type = fdStartType.value;
-      const reason = fdReason.value.trim() || null;
+    btnDoStartFD.onclick = ()=>{
+      const type=fdStartType.value, reason=fdReason.value.trim()||null;
       if(type==='bypass'){
         const panelBy = fdPanelBy.value.trim();
         if(!requireName(panelBy)) return alert('Enter who put the panel on fire watch.');
-        state.status = S.ACTIVE;
-        state.current = {
-          startedAt: Date.now(),
-          startedByRole: 'FD',
-          startedByName: state.user.name,
-          reason, bypassUsed: true, panelByName: panelBy
-        };
-        log('start_fd_bypass', `Panel by: ${panelBy}` + (reason?` — Reason: ${reason}`:''));
+        state.status=S.ACTIVE;
+        state.current={startedAt:Date.now(), startedByRole:'FD', startedByName:state.user.name, reason, bypassUsed:true, panelByName:panelBy};
+        log('start_fd_bypass', `Panel by: ${panelBy}`+(reason?` — Reason: ${reason}`:'')); fdPanelBy.value='';
       }else{
-        state.status = S.PENDING;
-        state.current = {
-          startedAt: Date.now(),
-          startedByRole: 'FD',
-          startedByName: state.user.name,
-          reason, bypassUsed: false
-        };
-        log('start_request_fd', reason ? `Reason: ${reason}` : '');
+        state.status=S.PENDING;
+        state.current={startedAt:Date.now(), startedByRole:'FD', startedByName:state.user.name, reason, bypassUsed:false};
+        log('start_request_fd', reason?`Reason: ${reason}`:'');
       }
-      fdPanelBy.value = '';
-      fdReason.value = '';
-      dlgStartFD.close();
-      render();
+      fdReason.value=''; dlgStartFD.close(); render();
     };
 
-    btnCancel.onclick = () => {
-      if(!state.user) return alert('Sign in first.');
-      if(state.status!==S.PENDING) return;
-      log('cancel_request', `Cancelled by ${state.user.role}`);
-      state.status = S.IDLE;
-      state.current = null;
-      render();
-    };
+    btnCancel.onclick = ()=>{ if(!state.user||state.status!==S.PENDING) return; log('cancel_request',`Cancelled by ${state.user.role}`); state.status=S.IDLE; state.current=null; render(); };
+    btnAcknowledge.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); dlgAck.showModal(); };
+    btnDoAck.onclick = ()=>{ const n=ackName.value.trim(); if(!requireName(n)||state.status!==S.PENDING) return; state.status=S.ACTIVE; state.current.ackAt=Date.now(); state.current.ackByName=n; log('acknowledge'); ackName.value=''; dlgAck.close(); render(); };
+    btnEnd.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); dlgEnd.showModal(); };
+    btnDoEnd.onclick = ()=>{ const n=endName.value.trim(); if(!requireName(n)) return; const notes=endNotes.value.trim(); log('end_fire_watch', notes?`Notes: ${notes}`:''); state.status=S.IDLE; state.current=null; endName.value=''; endNotes.value=''; dlgEnd.close(); render(); };
 
-    btnAcknowledge.onclick = () => {
-      if(!state.user) return alert('Sign in first.');
-      dlgAck.showModal();
-    };
-
-    btnDoAck.onclick = () => {
-      const n = ackName.value.trim();
-      if(!requireName(n)) return alert('Enter your name.');
-      if(state.status!==S.PENDING) return dlgAck.close();
-      state.status = S.ACTIVE;
-      state.current.ackAt = Date.now();
-      state.current.ackByName = n;
-      log('acknowledge');
-      ackName.value = '';
-      dlgAck.close();
-      render();
-    };
-
-    btnEnd.onclick = () => {
-      if(!state.user) return alert('Sign in first.');
-      dlgEnd.showModal();
-    };
-
-    btnDoEnd.onclick = () => {
-      const n = endName.value.trim();
-      if(!requireName(n)) return alert('Enter your name.');
-      const notes = endNotes.value.trim();
-      log('end_fire_watch', notes ? `Notes: ${notes}`:'');
-      state.status = S.IDLE;
-      state.current = null;
-      endName.value = '';
-      endNotes.value = '';
-      dlgEnd.close();
-      render();
-    };
-
-    btnExport.onclick = () => {
-      const rows = [['Time','Action','Role','Name','Details']];
-      state.logs.slice().reverse().forEach(l=>{
-        rows.push([fmt(l.ts), l.action, l.role, l.name, (l.details||'').replace(/\n/g,' ')]);
-      });
-      const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-      const blob = new Blob([csv], {type:'text/csv'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `firewatch_log_${Date.now()}.csv`; a.click();
-      URL.revokeObjectURL(url);
+    btnExport.onclick = ()=>{
+      const rows=[['Time','Action','Role','Name','Details']];
+      state.logs.slice().reverse().forEach(l=> rows.push([fmt(l.ts),l.action,l.role,l.name,(l.details||'').replace(/\n/g,' ')]));
+      const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=`firewatch_log_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     };
 
     render();
   </script>
 
-  <!-- Supabase (CDN) + config + simple ping -->
+  <!-- Supabase CDN + inline config + ping -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
   <script>
-    // Expect SUPABASE_URL and SUPABASE_ANON_KEY from config.js
+    // Your Supabase creds (anon key; safe for client with our RLS)
+    const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
+
     (async () => {
-      try{
+      try {
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
-        const pill = document.getElementById('backendPill');
-        if (error) { console.error(error); pill.textContent = 'Backend: connection error'; }
-        else { pill.textContent = 'Backend: connected'; }
-      }catch(e){
+        document.getElementById('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
+        if (error) console.error(error);
+      } catch (e) {
         console.error(e);
-        const pill = document.getElementById('backendPill');
-        pill.textContent = 'Backend: script load error';
+        document.getElementById('backendPill').textContent = 'Backend: script load error';
       }
     })();
   </script>
