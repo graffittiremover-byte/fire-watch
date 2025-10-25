@@ -5,67 +5,56 @@
   <title>Fire Watch</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50%25' x='50%25' dy='.35em' text-anchor='middle'%3E🔥%3C/text%3E%3C/svg%3E">
-
   <style>
-    :root{
-      --bg1:#0b1020; --bg2:#0f172a;
-      --card:#111827; --muted:#1f2937;
-      --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626;
-      --ink:#e5e7eb; --ink2:#94a3b8; --pill:#0b1224;
-      --table-line: rgba(148,163,184,.12);
-    }
-    body.theme-idle{ background:linear-gradient(180deg,#0b1020,#0f172a 45%,#0b1020); }
-    body.theme-pending{ background:linear-gradient(180deg,#221705,#3b2306 45%,#221705); }
-    body.theme-active{ background:linear-gradient(180deg,#06210e,#0c3b1a 45%,#06210e); }
-
+    :root{ --bg1:#0b1020; --bg2:#0f172a; --card:#111827; --muted:#1f2937;
+      --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --ink:#e5e7eb; --ink2:#94a3b8;
+      --pill:#0b1224; --table-line: rgba(148,163,184,.12);}
+    body.theme-idle{background:linear-gradient(180deg,#0b1020,#0f172a 45%,#0b1020)}
+    body.theme-pending{background:linear-gradient(180deg,#221705,#3b2306 45%,#221705)}
+    body.theme-active{background:linear-gradient(180deg,#06210e,#0c3b1a 45%,#06210e)}
     *{box-sizing:border-box}
-    body{
-      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
-      transition: background 300ms ease;
-    }
-    .app{width:100%; max-width:1100px; display:grid; gap:16px}
-    .row{display:grid; gap:16px}
-    @media (min-width:980px){ .row{grid-template-columns:1.2fr .8fr} }
-    .card{ background:linear-gradient(180deg,#12192f,#0f152a);
-      border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:20px; box-shadow:0 10px 35px rgba(0,0,0,.35) }
-    .h{display:flex; align-items:center; justify-content:space-between; gap:12px}
-    .title{font-size:18px; font-weight:700; letter-spacing:.2px}
-    .pill{font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.2); background:var(--pill); color:var(--ink2)}
-    .pill.bad{background:#2a0f12; border-color:#7f1d1d; color:#fecaca}
-    .status{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px; border:1px solid rgba(148,163,184,.2)}
-    .dot{width:10px; height:10px; border-radius:50%}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);
+      min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;transition:background 300ms ease}
+    .app{width:100%;max-width:1100px;display:grid;gap:16px}
+    .row{display:grid;gap:16px}
+    @media (min-width:980px){.row{grid-template-columns:1.2fr .8fr}}
+    .card{background:linear-gradient(180deg,#12192f,#0f152a);border:1px solid rgba(148,163,184,.15);
+      border-radius:18px;padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.35)}
+    .h{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .title{font-size:18px;font-weight:700;letter-spacing:.2px}
+    .pill{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.2);background:var(--pill);color:var(--ink2)}
+    .pill.bad{background:#2a0f12;border-color:#7f1d1d;color:#fecaca}
+    .status{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.2)}
+    .dot{width:10px;height:10px;border-radius:50%}
     .s-idle{background:var(--muted)} .s-pending{background:var(--warn)} .s-active{background:var(--ok)}
-    .stack{display:grid; gap:12px}
-    label{font-size:12px; color:var(--ink2)}
-    input[type="text"], input[type="password"], select, textarea{
-      width:100%; background:#0b1020; color:var(--ink);
-      border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:10px 12px; outline:none;
-    }
-    textarea{min-height:72px; resize:vertical}
-    .btn{ appearance:none; border:none; border-radius:14px; padding:8px 12px; font-weight:700; cursor:pointer;
-      background:linear-gradient(180deg,#1f2937,#111827); color:var(--ink); border:1px solid rgba(148,163,184,.2); font-size:14px}
+    .stack{display:grid;gap:12px}
+    label{font-size:12px;color:var(--ink2)}
+    input[type="text"],input[type="password"],select,textarea{width:100%;background:#0b1020;color:var(--ink);
+      border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:10px 12px;outline:none}
+    textarea{min-height:72px;resize:vertical}
+    .btn{appearance:none;border:none;border-radius:14px;padding:8px 12px;font-weight:700;cursor:pointer;
+      background:linear-gradient(180deg,#1f2937,#111827);color:var(--ink);border:1px solid rgba(148,163,184,.2);font-size:14px}
     .btn:hover{filter:brightness(1.05)}
-    .btn.sm{padding:6px 10px; font-size:12px; border-radius:10px}
-    .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7); border-color:#0284c7; color:white}
-    .btn.ok{background:linear-gradient(180deg,#16a34a,#15803d); border-color:#15803d; color:white}
-    .btn.warn{background:linear-gradient(180deg,#f59e0b,#d97706); border-color:#d97706; color:black}
-    .btn.bad{background:linear-gradient(180deg,#dc2626,#b91c1c); border-color:#b91c1c; color:white}
+    .btn.sm{padding:6px 10px;font-size:12px;border-radius:10px}
+    .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7);border-color:#0284c7;color:white}
+    .btn.ok{background:linear-gradient(180deg,#16a34a,#15803d);border-color:#15803d;color:white}
+    .btn.warn{background:linear-gradient(180deg,#f59e0b,#d97706);border-color:#d97706;color:black}
+    .btn.bad{background:linear-gradient(180deg,#dc2626,#b91c1c);border-color:#b91c1c;color:white}
     .btn.ghost{background:transparent}
-    .rowgrid{display:grid; gap:10px; grid-template-columns:1fr 1fr}
-    .muted{color:var(--ink2); font-size:13px}
-    table{width:100%; border-collapse:collapse; font-size:13px}
-    th,td{padding:10px; border-bottom:1px solid var(--table-line); text-align:left; vertical-align:top}
-    th{color:#c9d2ea; font-weight:600}
-    #histTable td{ color:#e5e7eb; }
-    #histTable tbody tr:hover{ background:rgba(148,163,184,.08); }
-    .toolbar{display:flex; gap:8px; flex-wrap:wrap}
-    dialog{ border:none; border-radius:16px; padding:0; background:transparent; max-width:980px; width:calc(100% - 32px) }
-    .modal{background:linear-gradient(180deg,#12192f,#0f152a); border:1px solid rgba(148,163,184,.15); border-radius:16px; padding:18px}
-    .modal .head{font-weight:800; margin-bottom:10px}
-    .modal .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
-    .flex{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-    .grid3{display:grid; gap:8px; grid-template-columns:1fr 1fr 1fr}
+    .rowgrid{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+    .muted{color:var(--ink2);font-size:13px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:10px;border-bottom:1px solid var(--table-line);text-align:left;vertical-align:top}
+    th{color:#c9d2ea;font-weight:600}
+    #histTable td{color:#e5e7eb}
+    #histTable tbody tr:hover{background:rgba(148,163,184,.08)}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    dialog{border:none;border-radius:16px;padding:0;background:transparent;max-width:980px;width:calc(100% - 32px)}
+    .modal{background:linear-gradient(180deg,#12192f,#0f152a);border:1px solid rgba(148,163,184,.15);border-radius:16px;padding:18px}
+    .modal .head{font-weight:800;margin-bottom:10px}
+    .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .grid3{display:grid;gap:8px;grid-template-columns:1fr 1fr 1fr}
     .nowrap{white-space:nowrap}
     .actions-col{white-space:nowrap}
   </style>
@@ -131,7 +120,7 @@
       <section class="card stack">
         <div class="h">
           <div class="title">Event Log (All activity)</div>
-          <div class="toolbar">
+        <div class="toolbar">
             <button id="btnExport" class="btn ghost">Export CSV</button>
             <span class="muted">Realtime + DB</span>
           </div>
@@ -149,141 +138,121 @@
   </main>
 
   <!-- Login Modal -->
-  <dialog id="dlgLogin">
-    <div class="modal">
-      <div class="head">Sign in</div>
-      <div class="stack">
-        <label>Role</label>
-        <select id="loginRole">
-          <option value="ENG">Engineering</option>
-          <option value="FD">Front Desk</option>
-        </select>
-        <label>PIN</label>
-        <input id="loginPin" type="password" placeholder="Enter PIN"/>
-        <label>Your Name</label>
-        <input id="loginName" type="text" placeholder="First & last name"/>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" id="btnCancelLogin">Cancel</button>
-        <button id="btnDoLogin" class="btn primary">Sign in</button>
-      </div>
+  <dialog id="dlgLogin"><div class="modal">
+    <div class="head">Sign in</div>
+    <div class="stack">
+      <label>Role</label>
+      <select id="loginRole"><option value="ENG">Engineering</option><option value="FD">Front Desk</option></select>
+      <label>PIN</label><input id="loginPin" type="password" placeholder="Enter PIN"/>
+      <label>Your Name</label><input id="loginName" type="text" placeholder="First & last name"/>
     </div>
-  </dialog>
+    <div class="actions">
+      <button class="btn ghost" id="btnCancelLogin">Cancel</button>
+      <button id="btnDoLogin" class="btn primary">Sign in</button>
+    </div>
+  </div></dialog>
 
   <!-- Start (Engineering) -->
-  <dialog id="dlgStartEng">
-    <div class="modal">
-      <div class="head">Start Fire Watch (Engineering)</div>
-      <div class="stack">
-        <label>Reason (optional)</label>
-        <textarea id="engReason" placeholder="e.g., Sprinkler impairment, system testing"></textarea>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" id="btnCancelStartEng">Cancel</button>
-        <button id="btnDoStartEng" class="btn ok">Start → Wait for Front Desk</button>
-      </div>
+  <dialog id="dlgStartEng"><div class="modal">
+    <div class="head">Start Fire Watch (Engineering)</div>
+    <div class="stack">
+      <label>Reason (optional)</label>
+      <textarea id="engReason" placeholder="e.g., Sprinkler impairment, system testing"></textarea>
     </div>
-  </dialog>
+    <div class="actions">
+      <button class="btn ghost" id="btnCancelStartEng">Cancel</button>
+      <button id="btnDoStartEng" class="btn ok">Start → Wait for Front Desk</button>
+    </div>
+  </div></dialog>
 
   <!-- Start (Front Desk) -->
-  <dialog id="dlgStartFD">
-    <div class="modal">
-      <div class="head">Start Fire Watch (Front Desk)</div>
-      <div class="stack">
-        <label>Start Type</label>
-        <select id="fdStartType">
-          <option value="normal">Normal (needs Engineering ack)</option>
-          <option value="bypass">Bypass (Engineering not on site)</option>
-        </select>
-        <div id="fdBypassWrap" class="stack" style="display:none">
-          <label>Who put the panel on fire watch? <span class="muted">(required)</span></label>
-          <input id="fdPanelBy" type="text" placeholder="Name responsible for panel"/>
-        </div>
-        <label>Reason (optional)</label>
-        <textarea id="fdReason" placeholder="e.g., Alarm vendor onsite, device isolation"></textarea>
+  <dialog id="dlgStartFD"><div class="modal">
+    <div class="head">Start Fire Watch (Front Desk)</div>
+    <div class="stack">
+      <label>Start Type</label>
+      <select id="fdStartType"><option value="normal">Normal (needs Engineering ack)</option><option value="bypass">Bypass (Engineering not on site)</option></select>
+      <div id="fdBypassWrap" class="stack" style="display:none">
+        <label>Who put the panel on fire watch? <span class="muted">(required)</span></label>
+        <input id="fdPanelBy" type="text" placeholder="Name responsible for panel"/>
       </div>
-      <div class="actions">
-        <button class="btn ghost" id="btnCancelStartFD">Cancel</button>
-        <button id="btnDoStartFD" class="btn ok">Start</button>
-      </div>
+      <label>Reason (optional)</label>
+      <textarea id="fdReason" placeholder="e.g., Alarm vendor onsite, device isolation"></textarea>
     </div>
-  </dialog>
+    <div class="actions">
+      <button class="btn ghost" id="btnCancelStartFD">Cancel</button>
+      <button id="btnDoStartFD" class="btn ok">Start</button>
+    </div>
+  </div></dialog>
 
-  <!-- Acknowledge (Front Desk) -->
-  <dialog id="dlgAck">
-    <div class="modal">
-      <div class="head">Acknowledge Fire Watch (Front Desk)</div>
-      <div class="stack">
-        <label>Front Desk Name</label>
-        <input id="ackName" type="text" placeholder="Your name"/>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" id="btnCancelAck">Cancel</button>
-        <button id="btnDoAck" class="btn ok">Acknowledge</button>
-      </div>
+  <!-- Acknowledge -->
+  <dialog id="dlgAck"><div class="modal">
+    <div class="head">Acknowledge Fire Watch (Front Desk)</div>
+    <div class="stack">
+      <label>Front Desk Name</label>
+      <input id="ackName" type="text" placeholder="Your name"/>
     </div>
-  </dialog>
+    <div class="actions">
+      <button class="btn ghost" id="btnCancelAck">Cancel</button>
+      <button id="btnDoAck" class="btn ok">Acknowledge</button>
+    </div>
+  </div></dialog>
 
   <!-- End -->
-  <dialog id="dlgEnd">
-    <div class="modal">
-      <div class="head">End Fire Watch</div>
-      <div class="stack">
-        <label>Your Name</label>
-        <input id="endName" type="text" placeholder="Your name"/>
-        <label>Notes (optional)</label>
-        <textarea id="endNotes" placeholder="Anything to add"></textarea>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" id="btnCancelEnd">Cancel</button>
-        <button id="btnDoEnd" class="btn bad">End Fire Watch</button>
-      </div>
+  <dialog id="dlgEnd"><div class="modal">
+    <div class="head">End Fire Watch</div>
+    <div class="stack">
+      <label>Your Name</label>
+      <input id="endName" type="text" placeholder="Your name"/>
+      <label>Notes (optional)</label>
+      <textarea id="endNotes" placeholder="Anything to add"></textarea>
     </div>
-  </dialog>
+    <div class="actions">
+      <button class="btn ghost" id="btnCancelEnd">Cancel</button>
+      <button id="btnDoEnd" class="btn bad">End Fire Watch</button>
+    </div>
+  </div></dialog>
 
   <!-- History -->
-  <dialog id="dlgHistory">
-    <div class="modal">
-      <div class="head">Fire Watch History</div>
-      <div class="grid3">
-        <input id="histSearch" type="text" placeholder="Search name / reason / notes" />
-        <select id="histStatus">
-          <option value="">All statuses</option>
-          <option value="ACTIVE">ACTIVE</option>
-          <option value="PENDING_ACK">PENDING_ACK</option>
-          <option value="ENDED">ENDED</option>
-        </select>
-        <div class="toolbar">
-          <button class="btn" id="btnHistRefresh">Refresh</button>
-          <button class="btn ghost" id="btnHistExport">Export CSV</button>
-        </div>
-      </div>
-      <div style="overflow:auto; max-height:60vh; margin-top:10px; border:1px solid rgba(148,163,184,.12); border-radius:12px;">
-        <table id="histTable">
-          <thead>
-            <tr>
-              <th class="nowrap">Started</th>
-              <th>Status</th>
-              <th>Started by</th>
-              <th>Acknowledged</th>
-              <th>Ended</th>
-              <th>Reason / Notes</th>
-              <th class="actions-col">Actions</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" id="btnCloseHistory">Close</button>
+  <dialog id="dlgHistory"><div class="modal">
+    <div class="head">Fire Watch History</div>
+    <div class="grid3">
+      <input id="histSearch" type="text" placeholder="Search name / reason / notes" />
+      <select id="histStatus">
+        <option value="">All statuses</option>
+        <option value="ACTIVE">ACTIVE</option>
+        <option value="PENDING_ACK">PENDING_ACK</option>
+        <option value="ENDED">ENDED</option>
+      </select>
+      <div class="toolbar">
+        <button class="btn" id="btnHistRefresh">Refresh</button>
+        <button class="btn ghost" id="btnHistExport">Export CSV</button>
+        <button class="btn ghost" id="btnHistPDFAll">Export All (PDF)</button>
       </div>
     </div>
-  </dialog>
+    <div style="overflow:auto; max-height:60vh; margin-top:10px; border:1px solid rgba(148,163,184,.12); border-radius:12px;">
+      <table id="histTable">
+        <thead>
+          <tr>
+            <th class="nowrap">Started</th>
+            <th>Status</th>
+            <th>Started by</th>
+            <th>Acknowledged</th>
+            <th>Ended</th>
+            <th>Reason / Notes</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="btnCloseHistory">Close</button>
+    </div>
+  </div></dialog>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- jsPDF (for PDF generation) -->
+  <!-- jsPDF -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
@@ -291,10 +260,7 @@
     const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
     window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  </script>
 
-  <!-- App logic -->
-  <script>
     const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
     const state = { status:S.IDLE, current:null, user:null, history:[], events:[] };
     const tz = 'America/Toronto';
@@ -366,7 +332,7 @@
       (state.events||[]).slice().reverse().forEach(e=>{
         rows.push([fmt(e.created_at), e.action||'', e.role||'', e.name||'', (e.details||'').replace(/\n/g,' ')]);
       });
-      const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
       const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
       const a=document.createElement('a'); a.href=url; a.download=`firewatch_events_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     }
@@ -376,16 +342,12 @@
       if (error) { console.error('logEvent insert failed:', error); $('eventsError').style.display = 'inline-block'; }
     }
     function subscribeEvents(){
-      sb.channel('rw_events')
-        .on('postgres_changes',{event:'*',schema:'public',table:'events'}, async ()=>{ await fetchEvents(); })
-        .subscribe();
+      sb.channel('rw_events').on('postgres_changes',{event:'*',schema:'public',table:'events'}, async ()=>{ await fetchEvents(); }).subscribe();
     }
 
     /* Current session */
     async function fetchCurrent(){
-      const { data, error } = await sb.from('fire_watches')
-        .select('*').in('status',['PENDING_ACK','ACTIVE'])
-        .order('started_at',{ascending:false}).limit(1);
+      const { data, error } = await sb.from('fire_watches').select('*').in('status',['PENDING_ACK','ACTIVE']).order('started_at',{ascending:false}).limit(1);
       if(error){ console.error('fetchCurrent', error); return null; }
       return (data && data[0]) || null;
     }
@@ -394,10 +356,9 @@
       state.current=row; state.status=row.status; render();
     }
     function subscribeRealtime(){
-      sb.channel('rw_fire_watches')
-        .on('postgres_changes',{event:'*',schema:'public',table:'fire_watches'}, async ()=>{
-          const row = await fetchCurrent(); applyRow(row);
-        }).subscribe();
+      sb.channel('rw_fire_watches').on('postgres_changes',{event:'*',schema:'public',table:'fire_watches'}, async ()=>{
+        const row = await fetchCurrent(); applyRow(row);
+      }).subscribe();
     }
 
     /* History */
@@ -461,16 +422,14 @@
       const a=document.createElement('a'); a.href=url; a.download=`firewatch_history_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     }
 
-    /* PDF generation */
-    function generatePDF(r){
+    /* PDF generation (single + all) */
+    function pdfForRecord(doc, r, isFirstPage){
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit:'pt', format:'letter' });
-
+      if (!isFirstPage) doc.addPage();
       const startedAt = fmt(r.started_at);
       const endedAt   = fmt(r.ended_at);
       const title = 'Fire Watch Report';
 
-      // Header
       doc.setFont('helvetica','bold'); doc.setFontSize(18);
       doc.text(title, 40, 50);
       doc.setFontSize(11); doc.setFont('helvetica','normal');
@@ -478,7 +437,6 @@
       doc.text(`Created at: ${startedAt || '—'}`, 40, 86);
       if (endedAt) doc.text(`Ended at: ${endedAt}`, 40, 102);
 
-      // Summary
       const lines = [
         ['Status', r.status || '—'],
         ['Started by', `${r.started_by_role || '—'} — ${r.started_by_name || '—'}`],
@@ -490,7 +448,6 @@
         ['Notes', r.notes || '—'],
       ];
 
-      // Table
       doc.autoTable({
         head: [['Field','Value']],
         body: lines,
@@ -500,57 +457,60 @@
         columnStyles: { 0:{cellWidth:150} }
       });
 
-      // Footer
       const url = location.href.split('?')[0];
       const when = new Date().toLocaleString('en-CA',{ timeZone: tz });
       doc.setFontSize(9);
       doc.text(`${url} • Generated ${when}`, 40, doc.internal.pageSize.getHeight() - 24);
-
-      const fileSafeDate = (new Date(r.ended_at || r.started_at || Date.now())).toISOString().slice(0,19).replace(/[:T]/g,'-');
-      doc.save(`firewatch_${r.id}_${fileSafeDate}.pdf`);
     }
 
-    // Exposed for History row buttons
+    function generatePDF(record){
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:'pt', format:'letter' });
+      pdfForRecord(doc, record, true);
+      const fileSafeDate = (new Date(record.ended_at || record.started_at || Date.now())).toISOString().slice(0,19).replace(/[:T]/g,'-');
+      doc.save(`firewatch_${record.id}_${fileSafeDate}.pdf`);
+    }
+
+    async function generateAllPDF(){
+      if (!state.history.length) { alert('No history loaded. Click Refresh first.'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:'pt', format:'letter' });
+      state.history.forEach((r, idx) => pdfForRecord(doc, r, idx===0));
+      doc.save(`firewatch_history_${Date.now()}.pdf`);
+    }
+
+    // Expose for History row buttons
     window.downloadPDF = async function(id){
       const { data, error } = await sb.from('fire_watches').select('*').eq('id', id).single();
       if(error){ console.error('fetch record for pdf', error); return alert('Could not load record'); }
       generatePDF(data);
     };
 
-    /* --------------- Handlers + wiring --------------- */
+    /* ------------ Actions wiring ------------- */
     function handleLoginOpen(){ $('dlgLogin').showModal(); }
     function handleLogout(){ logEvent('sign_out'); setUser(null); }
     function handleDoLogin(){
-      const role=$('loginRole').value;
-      const pin=$('loginPin').value.trim();
-      const name=$('loginName').value.trim();
+      const role=$('loginRole').value, pin=$('loginPin').value.trim(), name=$('loginName').value.trim();
       if(!requireName(name)) return alert('Please enter your name.');
       if((role==='ENG' && pin!=='4156')||(role==='FD' && pin!=='6666')) return alert('Wrong PIN for role.');
-      setUser({role,name}); $('dlgLogin').close(); $('loginPin').value='';
-      logEvent('sign_in', `role=${role}`);
+      setUser({role,name}); $('dlgLogin').close(); $('loginPin').value=''; logEvent('sign_in', `role=${role}`);
     }
     function handleStart(){
       if(!state.user) return alert('Sign in first.');
       if(state.status!==S.IDLE) return alert('A session exists. End or cancel it first.');
       if(state.user.role==='ENG') $('dlgStartEng').showModal(); else $('dlgStartFD').showModal();
     }
-    function handleFDTypeChange(){
-      const type=$('fdStartType').value;
-      $('fdBypassWrap').style.display = type==='bypass'?'grid':'none';
-    }
+    function handleFDTypeChange(){ $('fdBypassWrap').style.display = $('fdStartType').value==='bypass'?'grid':'none'; }
     async function handleDoStartEng(){
-      const ta=$('engReason'); const reason = ta.value.trim()||null; ta.value='';
-      $('dlgStartEng').close();
+      const ta=$('engReason'); const reason = ta.value.trim()||null; ta.value=''; $('dlgStartEng').close();
       const { data, error } = await sb.from('fire_watches').insert({
         status:'PENDING_ACK', started_by_role:'ENG', started_by_name:state.user.name, reason
       }).select('*').single();
-      if(error){ console.error(error); alert('Insert failed'); return; }
-      logEvent('start_request_eng', reason?`reason=${reason}`:'');
-      applyRow(data);
+      if(error){ console.error(error); return alert('Insert failed'); }
+      logEvent('start_request_eng', reason?`reason=${reason}`:''); applyRow(data);
     }
     async function handleDoStartFD(){
-      const type=$('fdStartType').value;
-      const reason=($('fdReason').value.trim()||null);
+      const type=$('fdStartType').value; const reason=($('fdReason').value.trim()||null);
       $('fdReason').value=''; $('dlgStartFD').close();
       if(type==='bypass'){
         const panelBy = $('fdPanelBy').value.trim();
@@ -560,16 +520,14 @@
           status:'ACTIVE', started_by_role:'FD', started_by_name:state.user.name, reason,
           bypass_used:true, panel_by_name:panelBy, fd_ack:true, fd_ack_by_name:state.user.name, fd_ack_at:new Date().toISOString()
         }).select('*').single();
-        if(error){ console.error(error); alert('Insert failed'); return; }
-        logEvent('start_fd_bypass', `panel_by=${panelBy}` + (reason?`; reason=${reason}`:''));
-        applyRow(data);
+        if(error){ console.error(error); return alert('Insert failed'); }
+        logEvent('start_fd_bypass', `panel_by=${panelBy}` + (reason?`; reason=${reason}`:'')); applyRow(data);
       }else{
         const { data, error } = await sb.from('fire_watches').insert({
           status:'PENDING_ACK', started_by_role:'FD', started_by_name:state.user.name, reason
         }).select('*').single();
-        if(error){ console.error(error); alert('Insert failed'); return; }
-        logEvent('start_request_fd', reason?`reason=${reason}`:'');
-        applyRow(data);
+        if(error){ console.error(error); return alert('Insert failed'); }
+        logEvent('start_request_fd', reason?`reason=${reason}`:''); applyRow(data);
       }
     }
     function handleAckOpen(){ if(!state.user) return alert('Sign in first.'); $('dlgAck').showModal(); }
@@ -579,58 +537,38 @@
       const { error } = await sb.from('fire_watches').update({
         status:'ACTIVE', fd_ack:true, fd_ack_by_name:n, fd_ack_at:new Date().toISOString()
       }).eq('id', state.current.id);
-      if(error){ console.error(error); alert('Acknowledge failed'); return; }
+      if(error){ console.error(error); return alert('Acknowledge failed'); }
       logEvent('acknowledge', `by=${n}`);
     }
     async function handleCancel(){
-      if(!state.user){ alert('Sign in first.'); return; }
+      if(!state.user){ return alert('Sign in first.'); }
       if(!state.current || state.status!==S.PENDING) return;
       const { error } = await sb.from('fire_watches').update({
         status:'ENDED', ended_at:new Date().toISOString(),
         ended_by_role:state.user?.role||null, ended_by_name:state.user?.name||null, notes:'cancelled while pending'
       }).eq('id', state.current.id);
-      if(error){ console.error(error); alert('Cancel failed'); return; }
+      if(error){ console.error(error); return alert('Cancel failed'); }
       logEvent('cancel_request', `by=${state.user?.role}/${state.user?.name}`);
     }
     function handleEndOpen(){ if(!state.user) return alert('Sign in first.'); $('dlgEnd').showModal(); }
-
     async function handleDoEnd(){
       const n=$('endName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
-      const notes=$('endNotes').value.trim();
-      $('endName').value=''; $('endNotes').value=''; $('dlgEnd').close(); if(!state.current) return;
-
-      // 1) Update DB to ENDED
+      const notes=$('endNotes').value.trim(); $('endName').value=''; $('endNotes').value=''; $('dlgEnd').close(); if(!state.current) return;
       const { data, error } = await sb.from('fire_watches').update({
-        status:'ENDED', ended_at:new Date().toISOString(),
-        ended_by_role:state.user.role, ended_by_name:n, notes:notes||null
+        status:'ENDED', ended_at:new Date().toISOString(), ended_by_role:state.user.role, ended_by_name:n, notes:notes||null
       }).eq('id', state.current.id).select('*').single();
-
-      if(error){ console.error(error); alert('End failed'); return; }
-
-      // 2) Log event
-      logEvent('end_fire_watch', notes?`notes=${notes}`:'');
-
-      // 3) Clear current and refresh UI
-      applyRow(null);
-
-      // 4) Generate PDF
-      try { generatePDF(data); } catch(e){ console.error('PDF generation failed', e); }
+      if(error){ console.error(error); return alert('End failed'); }
+      logEvent('end_fire_watch', notes?`notes=${notes}`:''); applyRow(null);
+      try{ generatePDF(data); }catch(e){ console.error('PDF generation failed', e); }
     }
 
     function sanityCheckIDs(){
-      const ids = [
-        'dlgLogin','dlgStartEng','dlgStartFD','dlgAck','dlgEnd','dlgHistory',
-        'btnLogin','btnLogout','btnStart','btnAcknowledge','btnCancel','btnEnd',
-        'btnOpenHistory','btnDoLogin','btnDoStartEng','btnDoStartFD','btnDoAck','btnDoEnd',
-        'btnCancelLogin','btnCancelStartEng','btnCancelStartFD','btnCancelAck','btnCancelEnd',
-        'btnHistRefresh','btnHistExport','btnCloseHistory','btnExport'
-      ];
+      const ids=['dlgLogin','dlgStartEng','dlgStartFD','dlgAck','dlgEnd','dlgHistory','btnLogin','btnLogout','btnStart','btnAcknowledge','btnCancel','btnEnd','btnOpenHistory','btnDoLogin','btnDoStartEng','btnDoStartFD','btnDoAck','btnDoEnd','btnCancelLogin','btnCancelStartEng','btnCancelStartFD','btnCancelAck','btnCancelEnd','btnHistRefresh','btnHistExport','btnHistPDFAll','btnCloseHistory','btnExport'];
       const missing = ids.filter(id => !$(id));
-      if (missing.length) console.warn('Missing elements with these IDs:', missing);
+      if(missing.length) console.warn('Missing elements with these IDs:', missing);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Buttons
       $('btnLogin').onclick = handleLoginOpen;
       $('btnLogout').onclick = handleLogout;
       $('btnStart').onclick = handleStart;
@@ -657,9 +595,9 @@
 
       $('btnHistRefresh').onclick = loadHistory;
       $('btnHistExport').onclick = exportHistoryCSV;
+      $('btnHistPDFAll').onclick = generateAllPDF;
       $('btnCloseHistory').onclick = () => $('dlgHistory').close();
 
-      // ✅ wire CSV export (Event Log)
       $('btnExport').onclick = exportEvents;
 
       sanityCheckIDs();
