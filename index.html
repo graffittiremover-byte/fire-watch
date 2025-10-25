@@ -10,7 +10,8 @@
       --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --ink:#e5e7eb; --ink2:#94a3b8; --accent:#38bdf8;
       --pill:#0b1224;
     }
-    *{box-sizing:border-box} body{
+    *{box-sizing:border-box}
+    body{
       margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
       background:linear-gradient(180deg,#0b1020, #0f172a 45%, #0b1020);
       color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
@@ -62,7 +63,7 @@
     .modal{background:linear-gradient(180deg,#12192f,#0f152a); border:1px solid rgba(148,163,184,.15); border-radius:16px; padding:18px}
     .modal .head{font-weight:800; margin-bottom:6px}
     .modal .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
-    .flex{display:flex; gap:10px; align-items:center}
+    .flex{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
     .right{justify-content:flex-end}
     small.code{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; padding:2px 6px; border-radius:8px; background:#0b1020; border:1px solid rgba(148,163,184,.2); color:#a8b3cf}
   </style>
@@ -81,7 +82,7 @@
       <div class="flex" style="margin-top:10px;">
         <div class="pill">Timezone: America/Toronto</div>
         <div id="userPill" class="pill">Not signed in</div>
-        <div class="pill">MVP demo (no database)</div>
+        <div id="backendPill" class="pill">Backend: connecting…</div>
       </div>
     </section>
 
@@ -123,7 +124,7 @@
         </div>
       </section>
 
-      <!-- Right: Quick Info / Log -->
+      <!-- Right: Log -->
       <section class="card stack">
         <div class="h">
           <div class="title">Event Log</div>
@@ -238,23 +239,23 @@
     </div>
   </dialog>
 
+  <!-- App JS (preview-only state machine) -->
   <script>
-    // --- Simple state machine (preview only) ---
     const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
     const pins = { ENG:'4156', FD:'6666' };
 
     const state = {
       status: S.IDLE,
-      current: null, // { startedAt, startedByRole, startedByName, reason, bypassUsed, panelByName, ackAt, ackByName }
-      user: null,    // { role, name }
-      logs: []       // { ts, action, role, name, details }
+      current: null,
+      user: null,
+      logs: []
     };
 
-    // --- Dom refs
-    const statusPill = document.getElementById('statusPill');
+    // DOM refs
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
     const userPill = document.getElementById('userPill');
+    const backendPill = document.getElementById('backendPill');
 
     const panelIdle = document.getElementById('panelIdle');
     const panelPending = document.getElementById('panelPending');
@@ -303,21 +304,15 @@
 
     const logTableBody = document.querySelector('#logTable tbody');
 
-    // --- Helpers ---
     const tz = 'America/Toronto';
-    function nowStr(){ return new Date().toLocaleString('en-CA', { timeZone: tz }); }
     function fmt(ts){ return new Date(ts).toLocaleString('en-CA', { timeZone: tz }); }
     function setStatus(s){
-      statusDot.className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':s===S.ACTIVE?'s-active':'s-bad');
+      statusDot.className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
       statusText.textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
     }
     function requireName(val){ return val && val.trim().length >= 2; }
     function log(action, details=''){
-      state.logs.unshift({
-        ts: Date.now(), action,
-        role: state.user?.role || '-', name: state.user?.name || '-',
-        details
-      });
+      state.logs.unshift({ ts: Date.now(), action, role: state.user?.role || '-', name: state.user?.name || '-', details });
       renderLogs();
     }
     function renderLogs(){
@@ -344,19 +339,15 @@
       }
       return false;
     }
-
     function render(){
       setStatus(state.status);
       panelIdle.style.display = state.status===S.IDLE ? 'grid':'none';
       panelPending.style.display = state.status===S.PENDING ? 'grid':'none';
       panelActive.style.display = state.status===S.ACTIVE ? 'grid':'none';
 
-      // Show/Hide actions based on role
       if(state.status===S.PENDING){
         pendingBy.textContent = `${state.current.startedByRole==='ENG'?'Engineering':'Front Desk'} — ${state.current.startedByName}`;
         pendingAt.textContent = fmt(state.current.startedAt);
-
-        // Only FD can acknowledge ENG-start, and ENG can acknowledge FD-start (normal path)
         const waitingForFD = state.current.startedByRole === 'ENG';
         btnAcknowledge.style.display =
           (waitingForFD && state.user?.role==='FD') ||
@@ -373,7 +364,7 @@
       }
     }
 
-    // --- Events ---
+    // Events
     btnLogin.onclick = () => dlgLogin.showModal();
     btnLogout.onclick = () => { setUser(null); log('sign_out'); };
 
@@ -401,7 +392,6 @@
     };
 
     btnDoStartEng.onclick = () => {
-      // ENG → Pending (wait FD)
       state.status = S.PENDING;
       state.current = {
         startedAt: Date.now(),
@@ -431,7 +421,6 @@
         };
         log('start_fd_bypass', `Panel by: ${panelBy}` + (reason?` — Reason: ${reason}`:''));
       }else{
-        // FD normal → Pending (wait ENG)
         state.status = S.PENDING;
         state.current = {
           startedAt: Date.now(),
@@ -505,29 +494,27 @@
       URL.revokeObjectURL(url);
     };
 
-    // initial
     render();
   </script>
+
+  <!-- Supabase (CDN) + config + simple ping -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
-<script>
-  // quick connectivity test
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  async function supabasePing() {
-    const { error } = await sb.from('fire_watches').select('id', { head: true, count: 'exact' });
-    const pill = document.getElementById('userPill');
-    if (error) {
-      console.error('Supabase connection failed:', error);
-      pill.textContent = 'Supabase: connection error';
-    } else {
-      console.log('Supabase connection OK');
-      pill.textContent = 'Connected to Supabase';
-    }
-  }
-
-  supabasePing();
-</script>
-
+  <script src="config.js"></script>
+  <script>
+    // Expect SUPABASE_URL and SUPABASE_ANON_KEY from config.js
+    (async () => {
+      try{
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
+        const pill = document.getElementById('backendPill');
+        if (error) { console.error(error); pill.textContent = 'Backend: connection error'; }
+        else { pill.textContent = 'Backend: connected'; }
+      }catch(e){
+        console.error(e);
+        const pill = document.getElementById('backendPill');
+        pill.textContent = 'Backend: script load error';
+      }
+    })();
+  </script>
 </body>
 </html>
