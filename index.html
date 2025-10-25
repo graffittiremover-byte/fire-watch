@@ -297,7 +297,10 @@
       btnLogout.style.display = u?'inline-block':'none';
       render();
     };
-    const guardOne = ()=> (state.status!==S.IDLE)&&alert('A Fire Watch is already in progress. End or cancel it first.');
+    const guardOne = ()=>{
+      if(state.status!==S.IDLE){ alert('A Fire Watch is already in progress. End or cancel it first.'); return true; }
+      return false;
+    };
 
     function render(){
       setStatus(state.status);
@@ -324,28 +327,48 @@
     // Events
     btnLogin.onclick = ()=> dlgLogin.showModal();
     btnLogout.onclick = ()=>{ setUser(null); log('sign_out'); };
+
     btnDoLogin.onclick = ()=>{
       const role=loginRole.value, pin=loginPin.value.trim(), name=loginName.value.trim();
       if(!requireName(name)) return alert('Please enter your name.');
-      if(pin!=='4156' && pin!=='6666') return alert('Wrong PIN.');
-      if((role==='ENG' && pin!=='4156')||(role==='FD' && pin!=='6666')) return alert('PIN does not match role.');
+      if((role==='ENG' && pin!=='4156')||(role==='FD' && pin!=='6666')) return alert('Wrong PIN for role.');
       setUser({role,name}); log('sign_in'); dlgLogin.close(); loginPin.value='';
     };
 
     btnStart.onclick = ()=>{
       if(!state.user) return alert('Sign in first.');
-      if(state.status!==S.IDLE) return guardOne();
+      if(guardOne()) return;
       if(state.user.role==='ENG') dlgStartEng.showModal(); else dlgStartFD.showModal();
     };
 
     fdStartType.onchange = ()=>{ fdBypassWrap.style.display = fdStartType.value==='bypass'?'grid':'none'; };
 
-    btnDoStartEng.onclick = ()=>{
+    // ENGINEERING -> Start (creates DB row: PENDING_ACK)
+    btnDoStartEng.onclick = async ()=>{
+      // UI
       state.status=S.PENDING;
       state.current={startedAt:Date.now(), startedByRole:'ENG', startedByName:state.user.name, reason:engReason.value.trim()||null, bypassUsed:false};
       log('start_request_eng', state.current.reason?`Reason: ${state.current.reason}`:''); engReason.value=''; dlgStartEng.close(); render();
+
+      // DB insert
+      try{
+        const { data, error } = await sb
+          .from('fire_watches')
+          .insert({
+            status: 'PENDING_ACK',
+            started_by_role: 'ENG',
+            started_by_name: state.current.startedByName,
+            reason: state.current.reason
+          })
+          .select('id, started_at')
+          .single();
+        if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Database insert failed. Check console.'); return; }
+        state.current.db_id = data.id;
+        log('db_insert', `session ${String(data.id).slice(0,8)}…`);
+      }catch(e){ console.error(e); log('db_error','unexpected insert error'); }
     };
 
+    // FRONT DESK -> Start (preview-only for now)
     btnDoStartFD.onclick = ()=>{
       const type=fdStartType.value, reason=fdReason.value.trim()||null;
       if(type==='bypass'){
@@ -379,16 +402,18 @@
     render();
   </script>
 
-  <!-- Supabase CDN + inline config + ping -->
+  <!-- Supabase CDN + inline config + global client + ping -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // Your Supabase creds (anon key; safe for client with our RLS)
+    // Your Supabase creds (anon key; RLS protects writes)
     const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
 
+    // Global client for other scripts
+    window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     (async () => {
       try {
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
         document.getElementById('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
         if (error) console.error(error);
