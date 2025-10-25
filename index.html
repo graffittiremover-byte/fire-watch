@@ -8,7 +8,7 @@
   <!-- Force newest build on every deploy -->
   <script>
   (function () {
-    const APP_VERSION = "2025-10-25-10";  /* bump on each commit */
+    const APP_VERSION = "2025-10-25-11";  /* bump on each commit */
     const u = new URL(location.href);
     if (u.searchParams.get("v") !== APP_VERSION) {
       u.searchParams.set("v", APP_VERSION);
@@ -24,12 +24,25 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50%25' x='50%25' dy='.35em' text-anchor='middle'%3E🔥%3C/text%3E%3C/svg%3E">
 
   <style>
-    :root{ --bg:#0f172a; --card:#111827; --muted:#1f2937;
-      --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --ink:#e5e7eb; --ink2:#94a3b8; --pill:#0b1224; }
+    :root{
+      --bg1:#0b1020; --bg2:#0f172a;            /* Idle theme */
+      --card:#111827; --muted:#1f2937;
+      --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626;
+      --ink:#e5e7eb; --ink2:#94a3b8; --pill:#0b1224;
+      --table-line: rgba(148,163,184,.12);
+    }
+
+    /* Theme backgrounds by status */
+    body.theme-idle{ background:linear-gradient(180deg,#0b1020,#0f172a 45%,#0b1020); }
+    body.theme-pending{ background:linear-gradient(180deg,#221705,#3b2306 45%,#221705); }
+    body.theme-active{ background:linear-gradient(180deg,#06210e,#0c3b1a 45%,#06210e); }
+
     *{box-sizing:border-box}
-    body{ margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      background:linear-gradient(180deg,#0b1020,#0f172a 45%,#0b1020);
-      color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    body{
+      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+      transition: background 300ms ease;
+    }
     .app{width:100%; max-width:1100px; display:grid; gap:16px}
     .row{display:grid; gap:16px}
     @media (min-width:980px){ .row{grid-template-columns:1.2fr .8fr} }
@@ -59,9 +72,15 @@
     .btn.ghost{background:transparent}
     .rowgrid{display:grid; gap:10px; grid-template-columns:1fr 1fr}
     .muted{color:var(--ink2); font-size:13px}
+
     table{width:100%; border-collapse:collapse; font-size:13px}
-    th,td{padding:10px; border-bottom:1px solid rgba(148,163,184,.12); text-align:left; vertical-align:top}
-    th{color:#a8b3cf; font-weight:600}
+    th,td{padding:10px; border-bottom:1px solid var(--table-line); text-align:left; vertical-align:top}
+    th{color:#c9d2ea; font-weight:600}
+
+    /* ✨ History table text lighter for readability */
+    #histTable td{ color:#e5e7eb; }       /* light grey */
+    #histTable tbody tr:hover{ background:rgba(148,163,184,.08); }
+
     .toolbar{display:flex; gap:8px; flex-wrap:wrap}
     dialog{ border:none; border-radius:16px; padding:0; background:transparent; max-width:980px; width:calc(100% - 32px) }
     .modal{background:linear-gradient(180deg,#12192f,#0f152a); border:1px solid rgba(148,163,184,.15); border-radius:16px; padding:18px}
@@ -72,7 +91,7 @@
     .nowrap{white-space:nowrap}
   </style>
 </head>
-<body>
+<body class="theme-idle">
   <main class="app">
     <section class="card">
       <div class="h">
@@ -298,11 +317,20 @@
     const requireName = v => v && v.trim().length>=2;
 
     function $(id){ return document.getElementById(id); }
-    function safeShow(id){ const el=$(id); if(!el){ console.warn('Missing element:', id); return false; } el.showModal(); return true; }
+
+    function setThemeForStatus(s){
+      document.body.classList.remove('theme-idle','theme-pending','theme-active');
+      if(s===S.ACTIVE) document.body.classList.add('theme-active');
+      else if(s===S.PENDING) document.body.classList.add('theme-pending');
+      else document.body.classList.add('theme-idle');
+    }
+
     function setStatus(s){
+      setThemeForStatus(s);
       $('statusDot').className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
       $('statusText').textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
     }
+
     function render(){
       setStatus(state.status);
       $('panelIdle').style.display    = state.status===S.IDLE?'grid':'none';
@@ -327,6 +355,7 @@
         }
       }
     }
+
     function setUser(u){
       state.user = u;
       $('userPill').textContent = u?`${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}`:'Not signed in';
@@ -337,10 +366,7 @@
 
     /* ------------ GLOBAL EVENTS (DB) --------------- */
     async function fetchEvents(){
-      const { data, error } = await sb.from('events')
-        .select('*')
-        .order('id',{ascending:false})
-        .limit(200);
+      const { data, error } = await sb.from('events').select('*').order('id',{ascending:false}).limit(200);
       if(error){ console.error('fetchEvents', error); return; }
       state.events = data || [];
       renderEvents();
@@ -401,7 +427,7 @@
     }
 
     /* ---------------- HISTORY -------------------- */
-    function openHistory(){ safeShow('dlgHistory'); loadHistory(); }
+    function openHistory(){ $('dlgHistory').showModal(); loadHistory(); }
     async function loadHistory(){
       const q = ($('histSearch').value||'').trim().toLowerCase();
       const statusFilter = $('histStatus').value;
@@ -452,7 +478,7 @@
     }
 
     /* --------------- Handlers + wiring --------------- */
-    function handleLoginOpen(){ safeShow('dlgLogin'); }
+    function handleLoginOpen(){ $('dlgLogin').showModal(); }
     function handleLogout(){ logEvent('sign_out'); setUser(null); }
     function handleDoLogin(){
       const role=$('loginRole').value;
@@ -466,7 +492,7 @@
     function handleStart(){
       if(!state.user) return alert('Sign in first.');
       if(state.status!==S.IDLE) return alert('A session exists. End or cancel it first.');
-      if(state.user.role==='ENG') safeShow('dlgStartEng'); else safeShow('dlgStartFD');
+      if(state.user.role==='ENG') $('dlgStartEng').showModal(); else $('dlgStartFD').showModal();
     }
     function handleFDTypeChange(){
       const type=$('fdStartType').value;
@@ -506,7 +532,7 @@
         applyRow(data);
       }
     }
-    function handleAckOpen(){ if(!state.user) return alert('Sign in first.'); safeShow('dlgAck'); }
+    function handleAckOpen(){ if(!state.user) return alert('Sign in first.'); $('dlgAck').showModal(); }
     async function handleDoAck(){
       const n=$('ackName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
       $('ackName').value=''; $('dlgAck').close(); if(!state.current) return;
@@ -526,7 +552,7 @@
       if(error){ console.error(error); alert('Cancel failed'); return; }
       logEvent('cancel_request', `by=${state.user?.role}/${state.user?.name}`);
     }
-    function handleEndOpen(){ if(!state.user) return alert('Sign in first.'); safeShow('dlgEnd'); }
+    function handleEndOpen(){ if(!state.user) return alert('Sign in first.'); $('dlgEnd').showModal(); }
     async function handleDoEnd(){
       const n=$('endName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
       const notes=$('endNotes').value.trim();
