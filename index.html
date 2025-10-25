@@ -128,100 +128,30 @@
     </div>
   </main>
 
-  <!-- Login Modal -->
-  <dialog id="dlgLogin">
-    <div class="modal">
-      <div class="head">Sign in</div>
-      <div class="stack">
-        <label>Role</label>
-        <select id="loginRole">
-          <option value="ENG">Engineering</option>
-          <option value="FD">Front Desk</option>
-        </select>
-        <label>PIN</label>
-        <input id="loginPin" type="password" placeholder="Enter PIN"/>
-        <label>Your Name</label>
-        <input id="loginName" type="text" placeholder="First & last name"/>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" onclick="dlgLogin.close()">Cancel</button>
-        <button id="btnDoLogin" class="btn primary">Sign in</button>
-      </div>
-    </div>
-  </dialog>
+  <!-- Supabase FIRST (CDN + config + global client + ping) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Your Supabase creds (anon key; RLS protects writes)
+    const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
 
-  <!-- Start (Engineering) -->
-  <dialog id="dlgStartEng">
-    <div class="modal">
-      <div class="head">Start Fire Watch (Engineering)</div>
-      <div class="stack">
-        <label>Reason (optional)</label>
-        <textarea id="engReason" placeholder="e.g., Sprinkler impairment, system testing"></textarea>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" onclick="dlgStartEng.close()">Cancel</button>
-        <button id="btnDoStartEng" class="btn ok">Start → Wait for Front Desk</button>
-      </div>
-    </div>
-  </dialog>
+    // Global client
+    window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  <!-- Start (Front Desk) -->
-  <dialog id="dlgStartFD">
-    <div class="modal">
-      <div class="head">Start Fire Watch (Front Desk)</div>
-      <div class="stack">
-        <label>Start Type</label>
-        <select id="fdStartType">
-          <option value="normal">Normal (needs Engineering ack)</option>
-          <option value="bypass">Bypass (Engineering not on site)</option>
-        </select>
-        <div id="fdBypassWrap" class="stack" style="display:none">
-          <label>Who put the panel on fire watch? <span class="muted">(required)</span></label>
-          <input id="fdPanelBy" type="text" placeholder="Name responsible for panel"/>
-        </div>
-        <label>Reason (optional)</label>
-        <textarea id="fdReason" placeholder="e.g., Alarm vendor onsite, device isolation"></textarea>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" onclick="dlgStartFD.close()">Cancel</button>
-        <button id="btnDoStartFD" class="btn ok">Start</button>
-      </div>
-    </div>
-  </dialog>
+    // Connectivity pill
+    (async () => {
+      try {
+        const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
+        document.getElementById('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
+        if (error) console.error('Ping error:', error);
+      } catch (e) {
+        console.error('Ping exception:', e);
+        document.getElementById('backendPill').textContent = 'Backend: script load error';
+      }
+    })();
+  </script>
 
-  <!-- Acknowledge (Front Desk) -->
-  <dialog id="dlgAck">
-    <div class="modal">
-      <div class="head">Acknowledge Fire Watch (Front Desk)</div>
-      <div class="stack">
-        <label>Front Desk Name</label>
-        <input id="ackName" type="text" placeholder="Your name"/>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" onclick="dlgAck.close()">Cancel</button>
-        <button id="btnDoAck" class="btn ok">Acknowledge</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- End -->
-  <dialog id="dlgEnd">
-    <div class="modal">
-      <div class="head">End Fire Watch</div>
-      <div class="stack">
-        <label>Your Name</label>
-        <input id="endName" type="text" placeholder="Your name"/>
-        <label>Notes (optional)</label>
-        <textarea id="endNotes" placeholder="Anything to add"></textarea>
-      </div>
-      <div class="actions">
-        <button class="btn ghost" onclick="dlgEnd.close()">Cancel</button>
-        <button id="btnDoEnd" class="btn bad">End Fire Watch</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- Preview-only app logic -->
+  <!-- App logic (now runs AFTER Supabase is ready) -->
   <script>
     const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
     const pins = { ENG:'4156', FD:'6666' };
@@ -324,7 +254,7 @@
       }
     }
 
-    // Events
+    // ===== Events =====
     btnLogin.onclick = ()=> dlgLogin.showModal();
     btnLogout.onclick = ()=>{ setUser(null); log('sign_out'); };
 
@@ -362,10 +292,10 @@
           })
           .select('id, started_at')
           .single();
-        if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Database insert failed. Check console.'); return; }
+        if(error){ console.error('Insert error:', error); log('db_error', error.message||'insert failed'); alert('Database insert failed. Check console.'); return; }
         state.current.db_id = data.id;
         log('db_insert', `session ${String(data.id).slice(0,8)}…`);
-      }catch(e){ console.error(e); log('db_error','unexpected insert error'); }
+      }catch(e){ console.error('Insert exception:', e); log('db_error','unexpected insert error'); }
     };
 
     // FRONT DESK -> Start (preview-only for now)
@@ -400,28 +330,6 @@
     };
 
     render();
-  </script>
-
-  <!-- Supabase CDN + inline config + global client + ping -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // Your Supabase creds (anon key; RLS protects writes)
-    const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
-
-    // Global client for other scripts
-    window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    (async () => {
-      try {
-        const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
-        document.getElementById('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
-        if (error) console.error(error);
-      } catch (e) {
-        console.error(e);
-        document.getElementById('backendPill').textContent = 'Backend: script load error';
-      }
-    })();
   </script>
 </body>
 </html>
