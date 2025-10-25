@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <title>Fire Watch</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- tiny inline favicon to stop 404 -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50%25' x='50%25' dy='.35em' text-anchor='middle'%3E🔥%3C/text%3E%3C/svg%3E">
   <style>
     :root{ --bg:#0f172a; --card:#111827; --muted:#1f2937;
       --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626; --ink:#e5e7eb; --ink2:#94a3b8; --pill:#0b1224; }
@@ -21,7 +23,7 @@
     .pill{font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.2); background:var(--pill); color:var(--ink2)}
     .status{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px; border:1px solid rgba(148,163,184,.2)}
     .dot{width:10px; height:10px; border-radius:50%}
-    .s-idle{background:var(--muted)} .s-pending{background:var(--warn)} .s-active{background:var(--ok)} .s-bad{background:var(--bad)}
+    .s-idle{background:var(--muted)} .s-pending{background:var(--warn)} .s-active{background:var(--ok)}
     .stack{display:grid; gap:12px}
     label{font-size:12px; color:var(--ink2)}
     input[type="text"], input[type="password"], select, textarea{
@@ -68,18 +70,19 @@
     </section>
 
     <div class="row">
+      <!-- Left: Main Panel -->
       <section class="card stack">
         <div class="h">
           <div class="title">Control Panel</div>
           <div class="toolbar">
-            <button id="btnLogin" class="btn">Sign in</button>
-            <button id="btnLogout" class="btn ghost" style="display:none">Sign out</button>
+            <button id="btnLogin" class="btn" onclick="handleLoginOpen()">Sign in</button>
+            <button id="btnLogout" class="btn ghost" style="display:none" onclick="handleLogout()">Sign out</button>
           </div>
         </div>
 
         <div id="panelIdle" class="stack">
           <div class="muted">Current state: <b>Idle</b>. Start a Fire Watch.</div>
-          <button id="btnStart" class="btn primary">Start Fire Watch</button>
+          <button id="btnStart" class="btn primary" onclick="handleStart()">Start Fire Watch</button>
         </div>
 
         <div id="panelPending" class="stack" style="display:none">
@@ -89,8 +92,8 @@
             <div><b>At:</b> <span id="pendingAt"></span></div>
           </div>
           <div class="toolbar">
-            <button id="btnAcknowledge" class="btn ok" style="display:none">Acknowledge (Front Desk)</button>
-            <button id="btnCancel" class="btn bad">Cancel Request</button>
+            <button id="btnAcknowledge" class="btn ok" style="display:none" onclick="handleAckOpen()">Acknowledge (Front Desk)</button>
+            <button id="btnCancel" class="btn bad" onclick="handleCancel()">Cancel Request</button>
           </div>
         </div>
 
@@ -100,15 +103,16 @@
             <div><b>Started by:</b> <span id="activeBy"></span></div>
             <div><b>Acknowledged by:</b> <span id="activeAck"></span></div>
           </div>
-          <button id="btnEnd" class="btn warn">End Fire Watch</button>
+          <button id="btnEnd" class="btn warn" onclick="handleEndOpen()">End Fire Watch</button>
         </div>
       </section>
 
+      <!-- Right: Log -->
       <section class="card stack">
         <div class="h">
           <div class="title">Event Log</div>
           <div class="toolbar">
-            <button id="btnExport" class="btn ghost">Export CSV</button>
+            <button id="btnExport" class="btn ghost" onclick="handleExport()">Export CSV</button>
             <span class="muted">Realtime + DB</span>
           </div>
         </div>
@@ -125,99 +129,166 @@
     </div>
   </main>
 
-  <!-- Supabase FIRST (CDN + client + ping) -->
+  <!-- Login Modal -->
+  <dialog id="dlgLogin">
+    <div class="modal">
+      <div class="head">Sign in</div>
+      <div class="stack">
+        <label>Role</label>
+        <select id="loginRole">
+          <option value="ENG">Engineering</option>
+          <option value="FD">Front Desk</option>
+        </select>
+        <label>PIN</label>
+        <input id="loginPin" type="password" placeholder="Enter PIN"/>
+        <label>Your Name</label>
+        <input id="loginName" type="text" placeholder="First & last name"/>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgLogin').close()">Cancel</button>
+        <button id="btnDoLogin" class="btn primary" onclick="handleDoLogin()">Sign in</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Start (Engineering) -->
+  <dialog id="dlgStartEng">
+    <div class="modal">
+      <div class="head">Start Fire Watch (Engineering)</div>
+      <div class="stack">
+        <label>Reason (optional)</label>
+        <textarea id="engReason" placeholder="e.g., Sprinkler impairment, system testing"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgStartEng').close()">Cancel</button>
+        <button id="btnDoStartEng" class="btn ok" onclick="handleDoStartEng()">Start → Wait for Front Desk</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Start (Front Desk) -->
+  <dialog id="dlgStartFD">
+    <div class="modal">
+      <div class="head">Start Fire Watch (Front Desk)</div>
+      <div class="stack">
+        <label>Start Type</label>
+        <select id="fdStartType" onchange="handleFDTypeChange()">
+          <option value="normal">Normal (needs Engineering ack)</option>
+          <option value="bypass">Bypass (Engineering not on site)</option>
+        </select>
+        <div id="fdBypassWrap" class="stack" style="display:none">
+          <label>Who put the panel on fire watch? <span class="muted">(required)</span></label>
+          <input id="fdPanelBy" type="text" placeholder="Name responsible for panel"/>
+        </div>
+        <label>Reason (optional)</label>
+        <textarea id="fdReason" placeholder="e.g., Alarm vendor onsite, device isolation"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgStartFD').close()">Cancel</button>
+        <button id="btnDoStartFD" class="btn ok" onclick="handleDoStartFD()">Start</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Acknowledge (Front Desk) -->
+  <dialog id="dlgAck">
+    <div class="modal">
+      <div class="head">Acknowledge Fire Watch (Front Desk)</div>
+      <div class="stack">
+        <label>Front Desk Name</label>
+        <input id="ackName" type="text" placeholder="Your name"/>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgAck').close()">Cancel</button>
+        <button id="btnDoAck" class="btn ok" onclick="handleDoAck()">Acknowledge</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- End -->
+  <dialog id="dlgEnd">
+    <div class="modal">
+      <div class="head">End Fire Watch</div>
+      <div class="stack">
+        <label>Your Name</label>
+        <input id="endName" type="text" placeholder="Your name"/>
+        <label>Notes (optional)</label>
+        <textarea id="endNotes" placeholder="Anything to add"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('dlgEnd').close()">Cancel</button>
+        <button id="btnDoEnd" class="btn bad" onclick="handleDoEnd()">End Fire Watch</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Supabase (load first) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
     window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     (async () => {
-      const { error } = await sb.from('fire_watches').select('id',{ head:true, count:'exact' });
+      const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
       document.getElementById('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
       if (error) console.error(error);
     })();
   </script>
 
-  <!-- App logic -->
+  <!-- App logic (global functions used by inline onclicks) -->
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // ========= CONSTANTS / STATE =========
     const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
     const state = { status:S.IDLE, current:null, user:null, logs:[] };
-
-    // ========= DOM LOOKUP =========
-    const ids = [
-      'statusDot','statusText','userPill','panelIdle','panelPending','panelActive',
-      'btnLogin','btnLogout','btnStart','btnAcknowledge','btnCancel','btnEnd','btnExport',
-      'pendingBy','pendingAt','activeSince','activeBy','activeAck',
-      'dlgLogin','loginRole','loginPin','loginName','btnDoLogin',
-      'dlgStartEng','engReason','btnDoStartEng',
-      'dlgStartFD','fdStartType','fdBypassWrap','fdPanelBy','fdReason','btnDoStartFD',
-      'dlgAck','ackName','btnDoAck',
-      'dlgEnd','endName','endNotes','btnDoEnd'
-    ];
-    const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
-    // Sanity check: log missing IDs to help debug
-    const missing = ids.filter(id => !el[id]);
-    if (missing.length) {
-      console.error('Missing elements with these IDs:', missing);
-      // Hard stop so we don’t attach handlers to null
-      return;
-    }
-
-    const fmt = ts => new Date(ts).toLocaleString('en-CA',{timeZone:'America/Toronto'});
-    const setStatus = s => {
-      el.statusDot.className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
-      el.statusText.textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
-    };
+    const tz = 'America/Toronto';
+    const fmt = ts => new Date(ts).toLocaleString('en-CA',{timeZone:tz});
     const requireName = v => v && v.trim().length>=2;
-    const log = (action,details='')=>{
-      state.logs.unshift({ts:Date.now(),action,role:state.user?.role||'-',name:state.user?.name||'-',details});
-      document.querySelector('#logTable tbody').innerHTML = state.logs.map(l=>`
-        <tr><td>${fmt(l.ts)}</td><td>${l.action}</td><td>${l.role}</td><td>${l.name}</td><td>${l.details||''}</td></tr>
-      `).join('');
-    };
-    const setUser = u => {
-      state.user=u;
-      el.userPill.textContent = u?`${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}`:'Not signed in';
-      el.btnLogin.style.display = u?'none':'inline-block';
-      el.btnLogout.style.display = u?'inline-block':'none';
-      render();
-    };
 
+    function setStatus(s){
+      document.getElementById('statusDot').className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
+      document.getElementById('statusText').textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
+    }
     function render(){
       setStatus(state.status);
-      el.panelIdle.style.display = state.status===S.IDLE?'grid':'none';
-      el.panelPending.style.display = state.status===S.PENDING?'grid':'none';
-      el.panelActive.style.display = state.status===S.ACTIVE?'grid':'none';
+      document.getElementById('panelIdle').style.display    = state.status===S.IDLE?'grid':'none';
+      document.getElementById('panelPending').style.display = state.status===S.PENDING?'grid':'none';
+      document.getElementById('panelActive').style.display  = state.status===S.ACTIVE?'grid':'none';
 
       if(state.current){
         if(state.status===S.PENDING){
-          el.pendingBy.textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
-          el.pendingAt.textContent = fmt(state.current.started_at || Date.now());
+          document.getElementById('pendingBy').textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
+          document.getElementById('pendingAt').textContent = fmt(state.current.started_at || Date.now());
           const waitingForFD = state.current.started_by_role==='ENG';
-          el.btnAcknowledge.style.display =
-            (waitingForFD && state.user?.role==='FD') ||
-            (!waitingForFD && state.user?.role==='ENG') ? 'inline-block':'none';
+          const showAck = (waitingForFD && state.user?.role==='FD') || (!waitingForFD && state.user?.role==='ENG');
+          document.getElementById('btnAcknowledge').style.display = showAck ? 'inline-block':'none';
         }
         if(state.status===S.ACTIVE){
-          el.activeSince.textContent = fmt(state.current.started_at || Date.now());
-          el.activeBy.textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
-          el.activeAck.textContent = state.current.bypass_used
+          document.getElementById('activeSince').textContent = fmt(state.current.started_at || Date.now());
+          document.getElementById('activeBy').textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
+          document.getElementById('activeAck').textContent = state.current.bypass_used
             ? `Bypass used (Panel by: ${state.current.panel_by_name || '—'})`
             : (state.current.fd_ack_by_name ? `Front Desk — ${state.current.fd_ack_by_name}` : '—');
         }
       }
     }
+    function log(action,details=''){
+      state.logs.unshift({ts:Date.now(),action,role:state.user?.role||'-',name:state.user?.name||'-',details});
+      document.querySelector('#logTable tbody').innerHTML = state.logs.map(l =>
+        `<tr><td>${fmt(l.ts)}</td><td>${l.action}</td><td>${l.role}</td><td>${l.name}</td><td>${l.details||''}</td></tr>`
+      ).join('');
+    }
+    function setUser(u){
+      state.user = u;
+      document.getElementById('userPill').textContent = u?`${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}`:'Not signed in';
+      document.getElementById('btnLogin').style.display = u?'none':'inline-block';
+      document.getElementById('btnLogout').style.display = u?'inline-block':'none';
+      render();
+    }
 
-    // ========= DB HELPERS =========
+    // DB helpers
     async function fetchCurrent(){
       const { data, error } = await sb.from('fire_watches')
-        .select('*')
-        .in('status',['PENDING_ACK','ACTIVE'])
-        .order('started_at',{ascending:false})
-        .limit(1);
+        .select('*').in('status',['PENDING_ACK','ACTIVE'])
+        .order('started_at',{ascending:false}).limit(1);
       if(error){ console.error('fetchCurrent', error); return null; }
       return (data && data[0]) || null;
     }
@@ -232,41 +303,49 @@
         }).subscribe();
     }
 
-    // ========= EVENTS =========
-    el.btnLogin.onclick = ()=> el.dlgLogin.showModal();
-    el.btnLogout.onclick = ()=>{ setUser(null); log('sign_out'); };
-
-    el.btnDoLogin.onclick = ()=>{
-      const role=el.loginRole.value, pin=el.loginPin.value.trim(), name=el.loginName.value.trim();
+    // Inline-handled actions
+    function handleLoginOpen(){ document.getElementById('dlgLogin').showModal(); }
+    function handleLogout(){ setUser(null); log('sign_out'); }
+    function handleDoLogin(){
+      const role=document.getElementById('loginRole').value;
+      const pin=document.getElementById('loginPin').value.trim();
+      const name=document.getElementById('loginName').value.trim();
       if(!requireName(name)) return alert('Please enter your name.');
       if((role==='ENG' && pin!=='4156')||(role==='FD' && pin!=='6666')) return alert('Wrong PIN for role.');
-      setUser({role,name}); log('sign_in'); el.dlgLogin.close(); el.loginPin.value='';
-    };
+      setUser({role,name}); log('sign_in'); document.getElementById('dlgLogin').close(); document.getElementById('loginPin').value='';
+    }
 
-    el.btnStart.onclick = ()=>{
+    function handleStart(){
       if(!state.user) return alert('Sign in first.');
-      if(state.status !== S.IDLE) return alert('A session exists. End or cancel it first.');
-      if(state.user.role==='ENG') el.dlgStartEng.showModal(); else el.dlgStartFD.showModal();
-    };
+      if(state.status!==S.IDLE) return alert('A session exists. End or cancel it first.');
+      if(state.user.role==='ENG') document.getElementById('dlgStartEng').showModal();
+      else document.getElementById('dlgStartFD').showModal();
+    }
+    function handleFDTypeChange(){
+      const wrap=document.getElementById('fdBypassWrap');
+      const type=document.getElementById('fdStartType').value;
+      wrap.style.display = type==='bypass'?'grid':'none';
+    }
 
-    el.fdStartType.onchange = ()=>{ el.fdBypassWrap.style.display = el.fdStartType.value==='bypass'?'grid':'none'; };
-
-    // ENG -> Start
-    el.btnDoStartEng.onclick = async ()=>{
-      const reason = el.engReason.value.trim()||null; el.engReason.value=''; el.dlgStartEng.close();
+    async function handleDoStartEng(){
+      const ta=document.getElementById('engReason');
+      const reason = ta.value.trim()||null; ta.value=''; document.getElementById('dlgStartEng').close();
       const { data, error } = await sb.from('fire_watches').insert({
         status:'PENDING_ACK', started_by_role:'ENG', started_by_name:state.user.name, reason
       }).select('*').single();
       if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Insert failed'); return; }
       log('start_request_eng', reason?`Reason: ${reason}`:''); applyRow(data);
-    };
+    }
 
-    // FD -> Start
-    el.btnDoStartFD.onclick = async ()=>{
-      const type=el.fdStartType.value, reason=el.fdReason.value.trim()||null; el.fdReason.value=''; el.dlgStartFD.close();
+    async function handleDoStartFD(){
+      const type=document.getElementById('fdStartType').value;
+      const reason=(document.getElementById('fdReason').value.trim()||null);
+      document.getElementById('fdReason').value=''; document.getElementById('dlgStartFD').close();
+
       if(type==='bypass'){
-        const panelBy = el.fdPanelBy.value.trim(); if(!requireName(panelBy)) return alert('Enter who put the panel on fire watch.');
-        el.fdPanelBy.value='';
+        const panelBy = document.getElementById('fdPanelBy').value.trim();
+        if(!requireName(panelBy)) return alert('Enter who put the panel on fire watch.');
+        document.getElementById('fdPanelBy').value='';
         const { data, error } = await sb.from('fire_watches').insert({
           status:'ACTIVE', started_by_role:'FD', started_by_name:state.user.name, reason,
           bypass_used:true, panel_by_name:panelBy, fd_ack:true, fd_ack_by_name:state.user.name, fd_ack_at:new Date().toISOString()
@@ -280,9 +359,20 @@
         if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Insert failed'); return; }
         log('start_request_fd', reason?`Reason: ${reason}`:''); applyRow(data);
       }
-    };
+    }
 
-    el.btnCancel.onclick = async ()=>{
+    function handleAckOpen(){ if(!state.user) return alert('Sign in first.'); document.getElementById('dlgAck').showModal(); }
+    async function handleDoAck(){
+      const n=document.getElementById('ackName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
+      document.getElementById('ackName').value=''; document.getElementById('dlgAck').close(); if(!state.current) return;
+      const { error } = await sb.from('fire_watches').update({
+        status:'ACTIVE', fd_ack:true, fd_ack_by_name:n, fd_ack_at:new Date().toISOString()
+      }).eq('id', state.current.id);
+      if(error){ console.error(error); alert('Acknowledge failed'); return; }
+      log('acknowledge',`by ${n}`);
+    }
+
+    async function handleCancel(){
       if(!state.current || state.status!==S.PENDING) return;
       const { error } = await sb.from('fire_watches').update({
         status:'ENDED', ended_at:new Date().toISOString(),
@@ -290,40 +380,41 @@
       }).eq('id', state.current.id);
       if(error){ console.error(error); alert('Cancel failed'); return; }
       log('cancel_request',`Cancelled by ${state.user?.role||'-'}`);
-    };
+    }
 
-    el.btnAcknowledge.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); el.dlgAck.showModal(); };
-    el.btnDoAck.onclick = async ()=>{
-      const n=el.ackName.value.trim(); if(!requireName(n)) return alert('Enter your name.');
-      el.ackName.value=''; el.dlgAck.close(); if(!state.current) return;
-      const { error } = await sb.from('fire_watches').update({
-        status:'ACTIVE', fd_ack:true, fd_ack_by_name:n, fd_ack_at:new Date().toISOString()
-      }).eq('id', state.current.id);
-      if(error){ console.error(error); alert('Acknowledge failed'); return; }
-      log('acknowledge',`by ${n}`);
-    };
-
-    el.btnEnd.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); el.dlgEnd.showModal(); };
-    el.btnDoEnd.onclick = async ()=>{
-      const n=el.endName.value.trim(); if(!requireName(n)) return alert('Enter your name.');
-      const notes=el.endNotes.value.trim(); el.endName.value=''; el.endNotes.value=''; el.dlgEnd.close(); if(!state.current) return;
+    function handleEndOpen(){ if(!state.user) return alert('Sign in first.'); document.getElementById('dlgEnd').showModal(); }
+    async function handleDoEnd(){
+      const n=document.getElementById('endName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
+      const notes=document.getElementById('endNotes').value.trim();
+      document.getElementById('endName').value=''; document.getElementById('endNotes').value='';
+      document.getElementById('dlgEnd').close(); if(!state.current) return;
       const { error } = await sb.from('fire_watches').update({
         status:'ENDED', ended_at:new Date().toISOString(), ended_by_role:state.user.role, ended_by_name:n, notes:notes||null
       }).eq('id', state.current.id);
       if(error){ console.error(error); alert('End failed'); return; }
       log('end_fire_watch', notes?`Notes: ${notes}`:'');
-    };
+    }
 
-    // Initial sync + realtime
+    function handleExport(){
+      const rows=[['Time','Action','Role','Name','Details']];
+      state.logs.slice().reverse().forEach(l=> rows.push([fmt(l.ts),l.action,l.role,l.name,(l.details||'').replace(/\n/g,' ')]));
+      const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=`firewatch_log_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+    }
+
+    // expose handlers
+    window.handleLoginOpen=handleLoginOpen; window.handleLogout=handleLogout; window.handleDoLogin=handleDoLogin;
+    window.handleStart=handleStart; window.handleFDTypeChange=handleFDTypeChange; window.handleDoStartEng=handleDoStartEng;
+    window.handleDoStartFD=handleDoStartFD; window.handleAckOpen=handleAckOpen; window.handleDoAck=handleDoAck;
+    window.handleCancel=handleCancel; window.handleEndOpen=handleEndOpen; window.handleDoEnd=handleDoEnd; window.handleExport=handleExport;
+
+    // initial sync + realtime
     (async () => {
       const row = await fetchCurrent(); applyRow(row);
-      // Toggle table Realtime ON in Supabase UI if you want live multi-user sync
-      sb.channel('rw_fire_watches')
-        .on('postgres_changes',{event:'*',schema:'public',table:'fire_watches'}, async ()=>{
-          const r = await fetchCurrent(); applyRow(r); log('sync','change'); })
-        .subscribe();
+      // turn Realtime ON for `fire_watches` in Supabase
+      subscribeRealtime();
     })();
-  });
   </script>
 </body>
 </html>
