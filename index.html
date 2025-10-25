@@ -43,9 +43,10 @@
       border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:10px 12px; outline:none;
     }
     textarea{min-height:72px; resize:vertical}
-    .btn{ appearance:none; border:none; border-radius:14px; padding:12px 16px; font-weight:700; cursor:pointer;
-      background:linear-gradient(180deg,#1f2937,#111827); color:var(--ink); border:1px solid rgba(148,163,184,.2); }
+    .btn{ appearance:none; border:none; border-radius:14px; padding:8px 12px; font-weight:700; cursor:pointer;
+      background:linear-gradient(180deg,#1f2937,#111827); color:var(--ink); border:1px solid rgba(148,163,184,.2); font-size:14px}
     .btn:hover{filter:brightness(1.05)}
+    .btn.sm{padding:6px 10px; font-size:12px; border-radius:10px}
     .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7); border-color:#0284c7; color:white}
     .btn.ok{background:linear-gradient(180deg,#16a34a,#15803d); border-color:#15803d; color:white}
     .btn.warn{background:linear-gradient(180deg,#f59e0b,#d97706); border-color:#d97706; color:black}
@@ -66,6 +67,7 @@
     .flex{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
     .grid3{display:grid; gap:8px; grid-template-columns:1fr 1fr 1fr}
     .nowrap{white-space:nowrap}
+    .actions-col{white-space:nowrap}
   </style>
 </head>
 <body class="theme-idle">
@@ -88,6 +90,7 @@
     </section>
 
     <div class="row">
+      <!-- Left -->
       <section class="card stack">
         <div class="h">
           <div class="title">Control Panel</div>
@@ -124,6 +127,7 @@
         </div>
       </section>
 
+      <!-- Right -->
       <section class="card stack">
         <div class="h">
           <div class="title">Event Log (All activity)</div>
@@ -264,6 +268,7 @@
               <th>Acknowledged</th>
               <th>Ended</th>
               <th>Reason / Notes</th>
+              <th class="actions-col">Actions</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -407,24 +412,53 @@
       const { data, error } = await query;
       if (error){ console.error('history load', error); return; }
 
-      const filtered = data.filter(r=>{
+      const filtered = (data||[]).filter(r=>{
         if(!q) return true;
         const hay = [r.started_by_name, r.started_by_role, r.fd_ack_by_name, r.panel_by_name, r.ended_by_name, r.reason, r.notes]
           .filter(Boolean).join(' ').toLowerCase();
         return hay.includes(q);
       });
 
+      state.history = filtered;
+      renderHistory();
+    }
+    function renderHistory(){
       const tbody = document.querySelector('#histTable tbody');
-      const rows = filtered.map(r=>{
+      const rows = state.history.map(r=>{
         const started = fmt(r.started_at);
         const startedBy = `${r.started_by_role||'—'} — ${r.started_by_name||'—'}`;
         const ack = r.bypass_used ? `Bypass ✓ (Panel by: ${r.panel_by_name||'—'})`
                                   : (r.fd_ack ? `FD: ${r.fd_ack_by_name||'—'} @ ${fmt(r.fd_ack_at)}` : '—');
         const ended = r.status==='ENDED' ? `${fmt(r.ended_at)} · by ${r.ended_by_role||'—'} — ${r.ended_by_name||'—'}` : '—';
         const rn = [r.reason, r.notes].filter(Boolean).join(' • ');
-        return `<tr><td class="nowrap">${started}</td><td>${r.status}</td><td>${startedBy}</td><td>${ack}</td><td>${ended}</td><td>${rn||''}</td></tr>`;
+        return `<tr>
+          <td class="nowrap">${started}</td>
+          <td>${r.status}</td>
+          <td>${startedBy}</td>
+          <td>${ack}</td>
+          <td>${ended}</td>
+          <td>${rn||''}</td>
+          <td class="actions-col">
+            <button class="btn sm" onclick="downloadPDF(${r.id})">PDF</button>
+          </td>
+        </tr>`;
       }).join('');
-      tbody.innerHTML = rows || `<tr><td colspan="6" class="muted">No records found.</td></tr>`;
+      tbody.innerHTML = rows || `<tr><td colspan="7" class="muted">No records found.</td></tr>`;
+    }
+    function exportHistoryCSV(){
+      const rows=[['Started','Status','Started By','Acknowledged','Ended','Reason / Notes','ID']];
+      (state.history||[]).forEach(r=>{
+        const started = fmt(r.started_at);
+        const startedBy = `${r.started_by_role||'—'} — ${r.started_by_name||'—'}`;
+        const ack = r.bypass_used ? `Bypass (Panel by: ${r.panel_by_name||'—'})`
+                                  : (r.fd_ack ? `FD: ${r.fd_ack_by_name||'—'} @ ${fmt(r.fd_ack_at)}` : '—');
+        const ended = r.status==='ENDED' ? `${fmt(r.ended_at)} · by ${r.ended_by_role||'—'} — ${r.ended_by_name||'—'}` : '—';
+        const rn = [r.reason, r.notes].filter(Boolean).join(' | ');
+        rows.push([started, r.status, startedBy, ack, ended, rn, r.id]);
+      });
+      const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=`firewatch_history_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     }
 
     /* PDF generation */
@@ -444,7 +478,7 @@
       doc.text(`Created at: ${startedAt || '—'}`, 40, 86);
       if (endedAt) doc.text(`Ended at: ${endedAt}`, 40, 102);
 
-      // Summary key/values
+      // Summary
       const lines = [
         ['Status', r.status || '—'],
         ['Started by', `${r.started_by_role || '—'} — ${r.started_by_name || '—'}`],
@@ -475,6 +509,13 @@
       const fileSafeDate = (new Date(r.ended_at || r.started_at || Date.now())).toISOString().slice(0,19).replace(/[:T]/g,'-');
       doc.save(`firewatch_${r.id}_${fileSafeDate}.pdf`);
     }
+
+    // Exposed for History row buttons
+    window.downloadPDF = async function(id){
+      const { data, error } = await sb.from('fire_watches').select('*').eq('id', id).single();
+      if(error){ console.error('fetch record for pdf', error); return alert('Could not load record'); }
+      generatePDF(data);
+    };
 
     /* --------------- Handlers + wiring --------------- */
     function handleLoginOpen(){ $('dlgLogin').showModal(); }
@@ -569,13 +610,11 @@
       // 2) Log event
       logEvent('end_fire_watch', notes?`notes=${notes}`:'');
 
-      // 3) Refresh the current row + render
+      // 3) Clear current and refresh UI
       applyRow(null);
-      const latest = await sb.from('fire_watches').select('*').eq('id', data.id).single();
-      const record = latest.data || data;
 
-      // 4) Generate PDF of the finished record
-      try { generatePDF(record); } catch(e){ console.error('PDF generation failed', e); }
+      // 4) Generate PDF
+      try { generatePDF(data); } catch(e){ console.error('PDF generation failed', e); }
     }
 
     function sanityCheckIDs(){
@@ -584,13 +623,14 @@
         'btnLogin','btnLogout','btnStart','btnAcknowledge','btnCancel','btnEnd',
         'btnOpenHistory','btnDoLogin','btnDoStartEng','btnDoStartFD','btnDoAck','btnDoEnd',
         'btnCancelLogin','btnCancelStartEng','btnCancelStartFD','btnCancelAck','btnCancelEnd',
-        'btnHistRefresh','btnHistExport','btnCloseHistory'
+        'btnHistRefresh','btnHistExport','btnCloseHistory','btnExport'
       ];
       const missing = ids.filter(id => !$(id));
       if (missing.length) console.warn('Missing elements with these IDs:', missing);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Buttons
       $('btnLogin').onclick = handleLoginOpen;
       $('btnLogout').onclick = handleLogout;
       $('btnStart').onclick = handleStart;
@@ -616,8 +656,11 @@
       $('btnCancelEnd').onclick = () => $('dlgEnd').close();
 
       $('btnHistRefresh').onclick = loadHistory;
-      $('btnHistExport').onclick = () => { /* optional: reuse event export */ };
+      $('btnHistExport').onclick = exportHistoryCSV;
       $('btnCloseHistory').onclick = () => $('dlgHistory').close();
+
+      // ✅ wire CSV export (Event Log)
+      $('btnExport').onclick = exportEvents;
 
       sanityCheckIDs();
 
@@ -637,7 +680,7 @@
     });
   </script>
 
-  <!-- ✅ Service worker registration -->
+  <!-- Service worker -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(console.error);
