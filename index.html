@@ -125,14 +125,15 @@
     </div>
   </main>
 
-  <!-- Supabase FIRST -->
+  <!-- Supabase FIRST (CDN + client + ping) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
     window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     (async () => {
-      const { error } = await sb.from('fire_watches').select('id',{head:true,count:'exact'});
+      const { error } = await sb.from('fire_watches').select('id',{ head:true, count:'exact' });
       document.getElementById('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
       if (error) console.error(error);
     })();
@@ -141,98 +142,82 @@
   <!-- App logic -->
   <script>
   document.addEventListener('DOMContentLoaded', () => {
+    // ========= CONSTANTS / STATE =========
     const S = { IDLE:'IDLE', PENDING:'PENDING_ACK', ACTIVE:'ACTIVE' };
     const state = { status:S.IDLE, current:null, user:null, logs:[] };
 
-    // --- DOM refs
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-    const userPill = document.getElementById('userPill');
-    const panelIdle = document.getElementById('panelIdle');
-    const panelPending = document.getElementById('panelPending');
-    const panelActive = document.getElementById('panelActive');
-    const btnLogin = document.getElementById('btnLogin');
-    const btnLogout = document.getElementById('btnLogout');
-    const btnStart = document.getElementById('btnStart');
-    const btnAcknowledge = document.getElementById('btnAcknowledge');
-    const btnCancel = document.getElementById('btnCancel');
-    const btnEnd = document.getElementById('btnEnd');
-    const btnExport = document.getElementById('btnExport');
-    const pendingBy = document.getElementById('pendingBy');
-    const pendingAt = document.getElementById('pendingAt');
-    const activeSince = document.getElementById('activeSince');
-    const activeBy = document.getElementById('activeBy');
-    const activeAck = document.getElementById('activeAck');
-    const dlgLogin = document.getElementById('dlgLogin');
-    const loginRole = document.getElementById('loginRole');
-    const loginPin = document.getElementById('loginPin');
-    const loginName = document.getElementById('loginName');
-    const btnDoLogin = document.getElementById('btnDoLogin');
-    const dlgStartEng = document.getElementById('dlgStartEng');
-    const engReason = document.getElementById('engReason');
-    const btnDoStartEng = document.getElementById('btnDoStartEng');
-    const dlgStartFD = document.getElementById('dlgStartFD');
-    const fdStartType = document.getElementById('fdStartType');
-    const fdBypassWrap = document.getElementById('fdBypassWrap');
-    const fdPanelBy = document.getElementById('fdPanelBy');
-    const fdReason = document.getElementById('fdReason');
-    const btnDoStartFD = document.getElementById('btnDoStartFD');
-    const dlgAck = document.getElementById('dlgAck');
-    const ackName = document.getElementById('ackName');
-    const btnDoAck = document.getElementById('btnDoAck');
-    const dlgEnd = document.getElementById('dlgEnd');
-    const endName = document.getElementById('endName');
-    const endNotes = document.getElementById('endNotes');
-    const btnDoEnd = document.getElementById('btnDoEnd');
-    const logTableBody = document.querySelector('#logTable tbody');
+    // ========= DOM LOOKUP =========
+    const ids = [
+      'statusDot','statusText','userPill','panelIdle','panelPending','panelActive',
+      'btnLogin','btnLogout','btnStart','btnAcknowledge','btnCancel','btnEnd','btnExport',
+      'pendingBy','pendingAt','activeSince','activeBy','activeAck',
+      'dlgLogin','loginRole','loginPin','loginName','btnDoLogin',
+      'dlgStartEng','engReason','btnDoStartEng',
+      'dlgStartFD','fdStartType','fdBypassWrap','fdPanelBy','fdReason','btnDoStartFD',
+      'dlgAck','ackName','btnDoAck',
+      'dlgEnd','endName','endNotes','btnDoEnd'
+    ];
+    const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+    // Sanity check: log missing IDs to help debug
+    const missing = ids.filter(id => !el[id]);
+    if (missing.length) {
+      console.error('Missing elements with these IDs:', missing);
+      // Hard stop so we don’t attach handlers to null
+      return;
+    }
 
     const fmt = ts => new Date(ts).toLocaleString('en-CA',{timeZone:'America/Toronto'});
     const setStatus = s => {
-      statusDot.className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
-      statusText.textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
+      el.statusDot.className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
+      el.statusText.textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
     };
     const requireName = v => v && v.trim().length>=2;
     const log = (action,details='')=>{
       state.logs.unshift({ts:Date.now(),action,role:state.user?.role||'-',name:state.user?.name||'-',details});
-      logTableBody.innerHTML = state.logs.map(l=>`<tr><td>${fmt(l.ts)}</td><td>${l.action}</td><td>${l.role}</td><td>${l.name}</td><td>${l.details||''}</td></tr>`).join('');
+      document.querySelector('#logTable tbody').innerHTML = state.logs.map(l=>`
+        <tr><td>${fmt(l.ts)}</td><td>${l.action}</td><td>${l.role}</td><td>${l.name}</td><td>${l.details||''}</td></tr>
+      `).join('');
     };
     const setUser = u => {
       state.user=u;
-      userPill.textContent = u?`${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}`:'Not signed in';
-      btnLogin.style.display = u?'none':'inline-block';
-      btnLogout.style.display = u?'inline-block':'none';
+      el.userPill.textContent = u?`${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}`:'Not signed in';
+      el.btnLogin.style.display = u?'none':'inline-block';
+      el.btnLogout.style.display = u?'inline-block':'none';
       render();
     };
+
     function render(){
       setStatus(state.status);
-      panelIdle.style.display = state.status===S.IDLE?'grid':'none';
-      panelPending.style.display = state.status===S.PENDING?'grid':'none';
-      panelActive.style.display = state.status===S.ACTIVE?'grid':'none';
+      el.panelIdle.style.display = state.status===S.IDLE?'grid':'none';
+      el.panelPending.style.display = state.status===S.PENDING?'grid':'none';
+      el.panelActive.style.display = state.status===S.ACTIVE?'grid':'none';
 
       if(state.current){
         if(state.status===S.PENDING){
-          pendingBy.textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
-          pendingAt.textContent = fmt(state.current.started_at || Date.now());
+          el.pendingBy.textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
+          el.pendingAt.textContent = fmt(state.current.started_at || Date.now());
           const waitingForFD = state.current.started_by_role==='ENG';
-          btnAcknowledge.style.display =
+          el.btnAcknowledge.style.display =
             (waitingForFD && state.user?.role==='FD') ||
             (!waitingForFD && state.user?.role==='ENG') ? 'inline-block':'none';
         }
         if(state.status===S.ACTIVE){
-          activeSince.textContent = fmt(state.current.started_at || Date.now());
-          activeBy.textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
-          activeAck.textContent = state.current.bypass_used
+          el.activeSince.textContent = fmt(state.current.started_at || Date.now());
+          el.activeBy.textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
+          el.activeAck.textContent = state.current.bypass_used
             ? `Bypass used (Panel by: ${state.current.panel_by_name || '—'})`
             : (state.current.fd_ack_by_name ? `Front Desk — ${state.current.fd_ack_by_name}` : '—');
         }
       }
     }
 
-    // DB helpers
+    // ========= DB HELPERS =========
     async function fetchCurrent(){
       const { data, error } = await sb.from('fire_watches')
-        .select('*').in('status',['PENDING_ACK','ACTIVE'])
-        .order('started_at',{ascending:false}).limit(1);
+        .select('*')
+        .in('status',['PENDING_ACK','ACTIVE'])
+        .order('started_at',{ascending:false})
+        .limit(1);
       if(error){ console.error('fetchCurrent', error); return null; }
       return (data && data[0]) || null;
     }
@@ -247,55 +232,57 @@
         }).subscribe();
     }
 
-    // Events
-    btnLogin.onclick = ()=> dlgLogin.showModal();
-    btnLogout.onclick = ()=>{ setUser(null); log('sign_out'); };
+    // ========= EVENTS =========
+    el.btnLogin.onclick = ()=> el.dlgLogin.showModal();
+    el.btnLogout.onclick = ()=>{ setUser(null); log('sign_out'); };
 
-    btnDoLogin.onclick = ()=>{
-      const role=loginRole.value, pin=loginPin.value.trim(), name=loginName.value.trim();
+    el.btnDoLogin.onclick = ()=>{
+      const role=el.loginRole.value, pin=el.loginPin.value.trim(), name=el.loginName.value.trim();
       if(!requireName(name)) return alert('Please enter your name.');
       if((role==='ENG' && pin!=='4156')||(role==='FD' && pin!=='6666')) return alert('Wrong PIN for role.');
-      setUser({role,name}); log('sign_in'); dlgLogin.close(); loginPin.value='';
+      setUser({role,name}); log('sign_in'); el.dlgLogin.close(); el.loginPin.value='';
     };
 
-    btnStart.onclick = ()=>{
+    el.btnStart.onclick = ()=>{
       if(!state.user) return alert('Sign in first.');
       if(state.status !== S.IDLE) return alert('A session exists. End or cancel it first.');
-      if(state.user.role==='ENG') dlgStartEng.showModal(); else dlgStartFD.showModal();
+      if(state.user.role==='ENG') el.dlgStartEng.showModal(); else el.dlgStartFD.showModal();
     };
 
-    fdStartType.onchange = ()=>{ fdBypassWrap.style.display = fdStartType.value==='bypass'?'grid':'none'; };
+    el.fdStartType.onchange = ()=>{ el.fdBypassWrap.style.display = el.fdStartType.value==='bypass'?'grid':'none'; };
 
-    btnDoStartEng.onclick = async ()=>{
-      const reason = engReason.value.trim()||null; engReason.value=''; dlgStartEng.close();
+    // ENG -> Start
+    el.btnDoStartEng.onclick = async ()=>{
+      const reason = el.engReason.value.trim()||null; el.engReason.value=''; el.dlgStartEng.close();
       const { data, error } = await sb.from('fire_watches').insert({
         status:'PENDING_ACK', started_by_role:'ENG', started_by_name:state.user.name, reason
       }).select('*').single();
-      if(error){ console.error(error); log('db_error',error.message||'insert failed'); alert('Insert failed'); return; }
+      if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Insert failed'); return; }
       log('start_request_eng', reason?`Reason: ${reason}`:''); applyRow(data);
     };
 
-    btnDoStartFD.onclick = async ()=>{
-      const type=fdStartType.value, reason=fdReason.value.trim()||null; fdReason.value=''; dlgStartFD.close();
+    // FD -> Start
+    el.btnDoStartFD.onclick = async ()=>{
+      const type=el.fdStartType.value, reason=el.fdReason.value.trim()||null; el.fdReason.value=''; el.dlgStartFD.close();
       if(type==='bypass'){
-        const panelBy = fdPanelBy.value.trim(); if(!requireName(panelBy)) return alert('Enter who put the panel on fire watch.');
-        fdPanelBy.value='';
+        const panelBy = el.fdPanelBy.value.trim(); if(!requireName(panelBy)) return alert('Enter who put the panel on fire watch.');
+        el.fdPanelBy.value='';
         const { data, error } = await sb.from('fire_watches').insert({
           status:'ACTIVE', started_by_role:'FD', started_by_name:state.user.name, reason,
           bypass_used:true, panel_by_name:panelBy, fd_ack:true, fd_ack_by_name:state.user.name, fd_ack_at:new Date().toISOString()
         }).select('*').single();
-        if(error){ console.error(error); log('db_error',error.message||'insert failed'); alert('Insert failed'); return; }
+        if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Insert failed'); return; }
         log('start_fd_bypass',`Panel by: ${panelBy}`+(reason?` — Reason: ${reason}`:'')); applyRow(data);
       }else{
         const { data, error } = await sb.from('fire_watches').insert({
           status:'PENDING_ACK', started_by_role:'FD', started_by_name:state.user.name, reason
         }).select('*').single();
-        if(error){ console.error(error); log('db_error',error.message||'insert failed'); alert('Insert failed'); return; }
+        if(error){ console.error(error); log('db_error', error.message||'insert failed'); alert('Insert failed'); return; }
         log('start_request_fd', reason?`Reason: ${reason}`:''); applyRow(data);
       }
     };
 
-    btnCancel.onclick = async ()=>{
+    el.btnCancel.onclick = async ()=>{
       if(!state.current || state.status!==S.PENDING) return;
       const { error } = await sb.from('fire_watches').update({
         status:'ENDED', ended_at:new Date().toISOString(),
@@ -305,10 +292,10 @@
       log('cancel_request',`Cancelled by ${state.user?.role||'-'}`);
     };
 
-    btnAcknowledge.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); dlgAck.showModal(); };
-    btnDoAck.onclick = async ()=>{
-      const n=ackName.value.trim(); if(!requireName(n)) return alert('Enter your name.');
-      ackName.value=''; dlgAck.close(); if(!state.current) return;
+    el.btnAcknowledge.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); el.dlgAck.showModal(); };
+    el.btnDoAck.onclick = async ()=>{
+      const n=el.ackName.value.trim(); if(!requireName(n)) return alert('Enter your name.');
+      el.ackName.value=''; el.dlgAck.close(); if(!state.current) return;
       const { error } = await sb.from('fire_watches').update({
         status:'ACTIVE', fd_ack:true, fd_ack_by_name:n, fd_ack_at:new Date().toISOString()
       }).eq('id', state.current.id);
@@ -316,10 +303,10 @@
       log('acknowledge',`by ${n}`);
     };
 
-    btnEnd.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); dlgEnd.showModal(); };
-    btnDoEnd.onclick = async ()=>{
-      const n=endName.value.trim(); if(!requireName(n)) return alert('Enter your name.');
-      const notes=endNotes.value.trim(); endName.value=''; endNotes.value=''; dlgEnd.close(); if(!state.current) return;
+    el.btnEnd.onclick = ()=>{ if(!state.user) return alert('Sign in first.'); el.dlgEnd.showModal(); };
+    el.btnDoEnd.onclick = async ()=>{
+      const n=el.endName.value.trim(); if(!requireName(n)) return alert('Enter your name.');
+      const notes=el.endNotes.value.trim(); el.endName.value=''; el.endNotes.value=''; el.dlgEnd.close(); if(!state.current) return;
       const { error } = await sb.from('fire_watches').update({
         status:'ENDED', ended_at:new Date().toISOString(), ended_by_role:state.user.role, ended_by_name:n, notes:notes||null
       }).eq('id', state.current.id);
@@ -327,17 +314,14 @@
       log('end_fire_watch', notes?`Notes: ${notes}`:'');
     };
 
-    btnExport.onclick = ()=>{
-      const rows=[['Time','Action','Role','Name','Details']];
-      state.logs.slice().reverse().forEach(l=> rows.push([fmt(l.ts),l.action,l.role,l.name,(l.details||'').replace(/\n/g,' ')]));
-      const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download=`firewatch_log_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
-    };
-
     // Initial sync + realtime
     (async () => {
-      const row = await fetchCurrent(); applyRow(row); subscribeRealtime();
+      const row = await fetchCurrent(); applyRow(row);
+      // Toggle table Realtime ON in Supabase UI if you want live multi-user sync
+      sb.channel('rw_fire_watches')
+        .on('postgres_changes',{event:'*',schema:'public',table:'fire_watches'}, async ()=>{
+          const r = await fetchCurrent(); applyRow(r); log('sync','change'); })
+        .subscribe();
     })();
   });
   </script>
