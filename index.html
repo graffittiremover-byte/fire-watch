@@ -5,10 +5,10 @@
   <title>Fire Watch</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- Always load the latest version (bump APP_VERSION when you deploy) -->
+  <!-- force latest -->
   <script>
   (function () {
-    const APP_VERSION = "2025-10-25-4"; // <-- bump this on each commit
+    const APP_VERSION = "2025-10-25-5";
     const u = new URL(location.href);
     if (u.searchParams.get("v") !== APP_VERSION) {
       u.searchParams.set("v", APP_VERSION);
@@ -20,7 +20,6 @@
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
 
-  <!-- tiny inline favicon -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='50%25' x='50%25' dy='.35em' text-anchor='middle'%3E🔥%3C/text%3E%3C/svg%3E">
 
   <style>
@@ -38,6 +37,7 @@
     .h{display:flex; align-items:center; justify-content:space-between; gap:12px}
     .title{font-size:18px; font-weight:700; letter-spacing:.2px}
     .pill{font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.2); background:var(--pill); color:var(--ink2)}
+    .pill.bad{background:#2a0f12; border-color:#7f1d1d; color:#fecaca}
     .status{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px; border:1px solid rgba(148,163,184,.2)}
     .dot{width:10px; height:10px; border-radius:50%}
     .s-idle{background:var(--muted)} .s-pending{background:var(--warn)} .s-active{background:var(--ok)}
@@ -85,6 +85,7 @@
         <div class="pill">Timezone: America/Toronto</div>
         <div id="userPill" class="pill">Not signed in</div>
         <div id="backendPill" class="pill">Backend: connecting…</div>
+        <div id="eventsError" class="pill bad" style="display:none">Events insert blocked</div>
         <button class="btn ghost" onclick="openHistory()">History</button>
       </div>
     </section>
@@ -113,7 +114,6 @@
           </div>
           <div class="toolbar">
             <button id="btnAcknowledge" class="btn ok" style="display:none" onclick="handleAckOpen()">Acknowledge (Front Desk)</button>
-            <!-- Only show Cancel when signed in -->
             <button id="btnCancel" class="btn bad" style="display:none" onclick="handleCancel()">Cancel Request</button>
           </div>
         </div>
@@ -128,7 +128,7 @@
         </div>
       </section>
 
-      <!-- Right: Event Log (ALL activity from DB, realtime) -->
+      <!-- Right: Event Log (ALL activity from DB) -->
       <section class="card stack">
         <div class="h">
           <div class="title">Event Log (All activity)</div>
@@ -280,7 +280,7 @@
     </div>
   </dialog>
 
-  <!-- Supabase (load first) -->
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
@@ -310,8 +310,6 @@
       document.getElementById('panelIdle').style.display    = state.status===S.IDLE?'grid':'none';
       document.getElementById('panelPending').style.display = state.status===S.PENDING?'grid':'none';
       document.getElementById('panelActive').style.display  = state.status===S.ACTIVE?'grid':'none';
-
-      // Only show Cancel when signed in
       document.getElementById('btnCancel').style.display = (state.status===S.PENDING && state.user) ? 'inline-block' : 'none';
 
       if(state.current){
@@ -339,7 +337,7 @@
       render();
     }
 
-    // ---- Global events (ALL browsers) ----
+    // ------- Global events (ALL browsers) -------
     async function fetchEvents(){
       const { data, error } = await sb.from('events')
         .select('*')
@@ -371,7 +369,6 @@
       const a=document.createElement('a'); a.href=url; a.download=`firewatch_events_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     }
     async function logEvent(action, details=''){
-      // Insert a global event row
       const payload = {
         action,
         role: state.user?.role || null,
@@ -379,7 +376,11 @@
         details: details || null
       };
       const { error } = await sb.from('events').insert(payload);
-      if(error) console.error('logEvent insert', error);
+      if (error) {
+        console.error('logEvent insert failed:', error);
+        const badge = document.getElementById('eventsError');
+        if (badge) badge.style.display = 'inline-block';
+      }
     }
     function subscribeEvents(){
       sb.channel('rw_events')
@@ -388,7 +389,7 @@
         }).subscribe();
     }
 
-    // ---- Current session helpers (fire_watches) ----
+    // ------- Fire watch (current) -------
     async function fetchCurrent(){
       const { data, error } = await sb.from('fire_watches')
         .select('*').in('status',['PENDING_ACK','ACTIVE'])
@@ -407,7 +408,7 @@
         }).subscribe();
     }
 
-    // ---- History helpers ----
+    // ------- History -------
     function openHistory(){ document.getElementById('dlgHistory').showModal(); loadHistory(); }
     async function loadHistory(){
       const q = (document.getElementById('histSearch').value||'').trim().toLowerCase();
@@ -478,7 +479,7 @@
       const a=document.createElement('a'); a.href=url; a.download=`firewatch_history_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     }
 
-    // ---- Inline handlers (auth + actions) ----
+    // ------- Inline handlers -------
     function handleLoginOpen(){ document.getElementById('dlgLogin').showModal(); }
     function handleLogout(){ logEvent('sign_out'); setUser(null); }
     function handleDoLogin(){
@@ -575,13 +576,16 @@
     window.handleCancel=handleCancel; window.handleEndOpen=handleEndOpen; window.handleDoEnd=handleDoEnd;
     window.openHistory=openHistory; window.loadHistory=loadHistory; window.exportHistory=exportHistory; window.exportEvents=exportEvents;
 
-    // initial sync + realtime
+    // init
     (async () => {
-      // live state + events
+      // try to write a quick marker so we can see if events insert works
+      logEvent('page_open', 'v=2025-10-25-5'); // ignore failure, just a probe
+
       const row = await fetchCurrent(); applyRow(row);
       await fetchEvents();
       subscribeRealtime();
-      subscribeEvents(); // ensure Realtime is ON for `events` table
+      subscribeEvents();
+      setInterval(fetchEvents, 5000); // polling safety net
     })();
   </script>
 </body>
