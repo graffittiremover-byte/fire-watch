@@ -5,10 +5,10 @@
   <title>Fire Watch</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- Force newest build each deploy -->
+  <!-- Force newest build on every deploy -->
   <script>
   (function () {
-    const APP_VERSION = "2025-10-25-9";  /* bump on each commit */
+    const APP_VERSION = "2025-10-25-10";  /* bump on each commit */
     const u = new URL(location.href);
     if (u.searchParams.get("v") !== APP_VERSION) {
       u.searchParams.set("v", APP_VERSION);
@@ -87,7 +87,7 @@
         <div id="userPill" class="pill">Not signed in</div>
         <div id="backendPill" class="pill">Backend: connecting…</div>
         <div id="eventsError" class="pill bad" style="display:none">Events insert blocked</div>
-        <button class="btn ghost" onclick="openHistory()">History</button>
+        <button id="btnOpenHistory" class="btn ghost">History</button>
       </div>
     </section>
 
@@ -97,14 +97,14 @@
         <div class="h">
           <div class="title">Control Panel</div>
           <div class="toolbar">
-            <button id="btnLogin" class="btn" onclick="handleLoginOpen()">Sign in</button>
-            <button id="btnLogout" class="btn ghost" style="display:none" onclick="handleLogout()">Sign out</button>
+            <button id="btnLogin" class="btn">Sign in</button>
+            <button id="btnLogout" class="btn ghost" style="display:none">Sign out</button>
           </div>
         </div>
 
         <div id="panelIdle" class="stack">
           <div class="muted">Current state: <b>Idle</b>. Start a Fire Watch.</div>
-          <button id="btnStart" class="btn primary" onclick="handleStart()">Start Fire Watch</button>
+          <button id="btnStart" class="btn primary">Start Fire Watch</button>
         </div>
 
         <div id="panelPending" class="stack" style="display:none">
@@ -114,8 +114,8 @@
             <div><b>At:</b> <span id="pendingAt"></span></div>
           </div>
           <div class="toolbar">
-            <button id="btnAcknowledge" class="btn ok" style="display:none" onclick="handleAckOpen()">Acknowledge (Front Desk)</button>
-            <button id="btnCancel" class="btn bad" style="display:none" onclick="handleCancel()">Cancel Request</button>
+            <button id="btnAcknowledge" class="btn ok" style="display:none">Acknowledge (Front Desk)</button>
+            <button id="btnCancel" class="btn bad" style="display:none">Cancel Request</button>
           </div>
         </div>
 
@@ -125,7 +125,7 @@
             <div><b>Started by:</b> <span id="activeBy"></span></div>
             <div><b>Acknowledged by:</b> <span id="activeAck"></span></div>
           </div>
-          <button id="btnEnd" class="btn warn" onclick="handleEndOpen()">End Fire Watch</button>
+          <button id="btnEnd" class="btn warn">End Fire Watch</button>
         </div>
       </section>
 
@@ -134,7 +134,7 @@
         <div class="h">
           <div class="title">Event Log (All activity)</div>
           <div class="toolbar">
-            <button id="btnExport" class="btn ghost" onclick="exportEvents()">Export CSV</button>
+            <button id="btnExport" class="btn ghost">Export CSV</button>
             <span class="muted">Realtime + DB</span>
           </div>
         </div>
@@ -166,8 +166,8 @@
         <input id="loginName" type="text" placeholder="First & last name"/>
       </div>
       <div class="actions">
-        <button class="btn ghost" onclick="document.getElementById('dlgLogin').close()">Cancel</button>
-        <button id="btnDoLogin" class="btn primary" onclick="handleDoLogin()">Sign in</button>
+        <button class="btn ghost" id="btnCancelLogin">Cancel</button>
+        <button id="btnDoLogin" class="btn primary">Sign in</button>
       </div>
     </div>
   </dialog>
@@ -181,8 +181,8 @@
         <textarea id="engReason" placeholder="e.g., Sprinkler impairment, system testing"></textarea>
       </div>
       <div class="actions">
-        <button class="btn ghost" onclick="document.getElementById('dlgStartEng').close()">Cancel</button>
-        <button id="btnDoStartEng" class="btn ok" onclick="handleDoStartEng()">Start → Wait for Front Desk</button>
+        <button class="btn ghost" id="btnCancelStartEng">Cancel</button>
+        <button id="btnDoStartEng" class="btn ok">Start → Wait for Front Desk</button>
       </div>
     </div>
   </dialog>
@@ -193,7 +193,7 @@
       <div class="head">Start Fire Watch (Front Desk)</div>
       <div class="stack">
         <label>Start Type</label>
-        <select id="fdStartType" onchange="handleFDTypeChange()">
+        <select id="fdStartType">
           <option value="normal">Normal (needs Engineering ack)</option>
           <option value="bypass">Bypass (Engineering not on site)</option>
         </select>
@@ -205,8 +205,8 @@
         <textarea id="fdReason" placeholder="e.g., Alarm vendor onsite, device isolation"></textarea>
       </div>
       <div class="actions">
-        <button class="btn ghost" onclick="document.getElementById('dlgStartFD').close()">Cancel</button>
-        <button id="btnDoStartFD" class="btn ok" onclick="handleDoStartFD()">Start</button>
+        <button class="btn ghost" id="btnCancelStartFD">Cancel</button>
+        <button id="btnDoStartFD" class="btn ok">Start</button>
       </div>
     </div>
   </dialog>
@@ -220,8 +220,8 @@
         <input id="ackName" type="text" placeholder="Your name"/>
       </div>
       <div class="actions">
-        <button class="btn ghost" onclick="document.getElementById('dlgAck').close()">Cancel</button>
-        <button id="btnDoAck" class="btn ok" onclick="handleDoAck()">Acknowledge</button>
+        <button class="btn ghost" id="btnCancelAck">Cancel</button>
+        <button id="btnDoAck" class="btn ok">Acknowledge</button>
       </div>
     </div>
   </dialog>
@@ -237,8 +237,8 @@
         <textarea id="endNotes" placeholder="Anything to add"></textarea>
       </div>
       <div class="actions">
-        <button class="btn ghost" onclick="document.getElementById('dlgEnd').close()">Cancel</button>
-        <button id="btnDoEnd" class="btn bad" onclick="handleDoEnd()">End Fire Watch</button>
+        <button class="btn ghost" id="btnCancelEnd">Cancel</button>
+        <button id="btnDoEnd" class="btn bad">End Fire Watch</button>
       </div>
     </div>
   </dialog>
@@ -256,8 +256,8 @@
           <option value="ENDED">ENDED</option>
         </select>
         <div class="toolbar">
-          <button class="btn" onclick="loadHistory()">Refresh</button>
-          <button class="btn ghost" onclick="exportHistory()">Export CSV</button>
+          <button class="btn" id="btnHistRefresh">Refresh</button>
+          <button class="btn ghost" id="btnHistExport">Export CSV</button>
         </div>
       </div>
       <div style="overflow:auto; max-height:60vh; margin-top:10px; border:1px solid rgba(148,163,184,.12); border-radius:12px;">
@@ -276,7 +276,7 @@
         </table>
       </div>
       <div class="actions">
-        <button class="btn ghost" onclick="document.getElementById('dlgHistory').close()">Close</button>
+        <button class="btn ghost" id="btnCloseHistory">Close</button>
       </div>
     </div>
   </dialog>
@@ -287,11 +287,6 @@
     const SUPABASE_URL = "https://uuoyhuxaklbyvfayilcy.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1b3lodXhha2xieXZmYXlpbGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzA0NzEsImV4cCI6MjA3Njk0NjQ3MX0.Ahdw5G3woFlLjMjTWuS8uqdQYcB7KnDL_MCaFYKkMIs";
     window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    (async () => {
-      const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
-      document.getElementById('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
-      if (error) console.error(error);
-    })();
   </script>
 
   <!-- App logic -->
@@ -302,29 +297,31 @@
     const fmt = ts => ts ? new Date(ts).toLocaleString('en-CA',{timeZone:tz}) : '—';
     const requireName = v => v && v.trim().length>=2;
 
+    function $(id){ return document.getElementById(id); }
+    function safeShow(id){ const el=$(id); if(!el){ console.warn('Missing element:', id); return false; } el.showModal(); return true; }
     function setStatus(s){
-      document.getElementById('statusDot').className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
-      document.getElementById('statusText').textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
+      $('statusDot').className = 'dot ' + (s===S.IDLE?'s-idle':s===S.PENDING?'s-pending':'s-active');
+      $('statusText').textContent = s===S.IDLE?'Idle':s===S.PENDING?'Pending Acknowledgement':'Active';
     }
     function render(){
       setStatus(state.status);
-      document.getElementById('panelIdle').style.display    = state.status===S.IDLE?'grid':'none';
-      document.getElementById('panelPending').style.display = state.status===S.PENDING?'grid':'none';
-      document.getElementById('panelActive').style.display  = state.status===S.ACTIVE?'grid':'none';
-      document.getElementById('btnCancel').style.display = (state.status===S.PENDING && state.user) ? 'inline-block' : 'none';
+      $('panelIdle').style.display    = state.status===S.IDLE?'grid':'none';
+      $('panelPending').style.display = state.status===S.PENDING?'grid':'none';
+      $('panelActive').style.display  = state.status===S.ACTIVE?'grid':'none';
+      $('btnCancel').style.display = (state.status===S.PENDING && state.user) ? 'inline-block' : 'none';
 
       if(state.current){
         if(state.status===S.PENDING){
-          document.getElementById('pendingBy').textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
-          document.getElementById('pendingAt').textContent = fmt(state.current.started_at || Date.now());
+          $('pendingBy').textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
+          $('pendingAt').textContent = fmt(state.current.started_at || Date.now());
           const waitingForFD = state.current.started_by_role==='ENG';
           const showAck = (waitingForFD && state.user?.role==='FD') || (!waitingForFD && state.user?.role==='ENG');
-          document.getElementById('btnAcknowledge').style.display = showAck ? 'inline-block':'none';
+          $('btnAcknowledge').style.display = showAck ? 'inline-block':'none';
         }
         if(state.status===S.ACTIVE){
-          document.getElementById('activeSince').textContent = fmt(state.current.started_at || Date.now());
-          document.getElementById('activeBy').textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
-          document.getElementById('activeAck').textContent = state.current.bypass_used
+          $('activeSince').textContent = fmt(state.current.started_at || Date.now());
+          $('activeBy').textContent = `${state.current.started_by_role==='ENG'?'Engineering':'Front Desk'} — ${state.current.started_by_name}`;
+          $('activeAck').textContent = state.current.bypass_used
             ? `Bypass used (Panel by: ${state.current.panel_by_name || '—'})`
             : (state.current.fd_ack_by_name ? `Front Desk — ${state.current.fd_ack_by_name}` : '—');
         }
@@ -332,9 +329,9 @@
     }
     function setUser(u){
       state.user = u;
-      document.getElementById('userPill').textContent = u?`${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}`:'Not signed in';
-      document.getElementById('btnLogin').style.display = u?'none':'inline-block';
-      document.getElementById('btnLogout').style.display = u?'inline-block':'none';
+      $('userPill').textContent = u?`${u.role==='ENG'?'Engineering':'Front Desk'} — ${u.name}`:'Not signed in';
+      $('btnLogin').style.display = u?'none':'inline-block';
+      $('btnLogout').style.display = u?'inline-block':'none';
       render();
     }
 
@@ -342,7 +339,7 @@
     async function fetchEvents(){
       const { data, error } = await sb.from('events')
         .select('*')
-        .order('id',{ascending:false})   // robust ordering
+        .order('id',{ascending:false})
         .limit(200);
       if(error){ console.error('fetchEvents', error); return; }
       state.events = data || [];
@@ -374,7 +371,7 @@
       const { error } = await sb.from('events').insert(payload);
       if (error) {
         console.error('logEvent insert failed:', error);
-        document.getElementById('eventsError').style.display = 'inline-block';
+        $('eventsError').style.display = 'inline-block';
       }
     }
     function subscribeEvents(){
@@ -404,10 +401,10 @@
     }
 
     /* ---------------- HISTORY -------------------- */
-    function openHistory(){ document.getElementById('dlgHistory').showModal(); loadHistory(); }
+    function openHistory(){ safeShow('dlgHistory'); loadHistory(); }
     async function loadHistory(){
-      const q = (document.getElementById('histSearch').value||'').trim().toLowerCase();
-      const statusFilter = document.getElementById('histStatus').value;
+      const q = ($('histSearch').value||'').trim().toLowerCase();
+      const statusFilter = $('histStatus').value;
 
       let query = sb.from('fire_watches').select('*').order('started_at', { ascending:false }).limit(200);
       if (statusFilter) query = query.eq('status', statusFilter);
@@ -454,32 +451,30 @@
       const a=document.createElement('a'); a.href=url; a.download=`firewatch_history_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
     }
 
-    /* --------------- Inline handlers --------------- */
-    function handleLoginOpen(){ document.getElementById('dlgLogin').showModal(); }
+    /* --------------- Handlers + wiring --------------- */
+    function handleLoginOpen(){ safeShow('dlgLogin'); }
     function handleLogout(){ logEvent('sign_out'); setUser(null); }
     function handleDoLogin(){
-      const role=document.getElementById('loginRole').value;
-      const pin=document.getElementById('loginPin').value.trim();
-      const name=document.getElementById('loginName').value.trim();
+      const role=$('loginRole').value;
+      const pin=$('loginPin').value.trim();
+      const name=$('loginName').value.trim();
       if(!requireName(name)) return alert('Please enter your name.');
       if((role==='ENG' && pin!=='4156')||(role==='FD' && pin!=='6666')) return alert('Wrong PIN for role.');
-      setUser({role,name}); document.getElementById('dlgLogin').close(); document.getElementById('loginPin').value='';
+      setUser({role,name}); $('dlgLogin').close(); $('loginPin').value='';
       logEvent('sign_in', `role=${role}`);
     }
     function handleStart(){
       if(!state.user) return alert('Sign in first.');
       if(state.status!==S.IDLE) return alert('A session exists. End or cancel it first.');
-      if(state.user.role==='ENG') document.getElementById('dlgStartEng').showModal();
-      else document.getElementById('dlgStartFD').showModal();
+      if(state.user.role==='ENG') safeShow('dlgStartEng'); else safeShow('dlgStartFD');
     }
     function handleFDTypeChange(){
-      const wrap=document.getElementById('fdBypassWrap');
-      const type=document.getElementById('fdStartType').value;
-      wrap.style.display = type==='bypass'?'grid':'none';
+      const type=$('fdStartType').value;
+      $('fdBypassWrap').style.display = type==='bypass'?'grid':'none';
     }
     async function handleDoStartEng(){
-      const ta=document.getElementById('engReason');
-      const reason = ta.value.trim()||null; ta.value=''; document.getElementById('dlgStartEng').close();
+      const ta=$('engReason'); const reason = ta.value.trim()||null; ta.value='';
+      $('dlgStartEng').close();
       const { data, error } = await sb.from('fire_watches').insert({
         status:'PENDING_ACK', started_by_role:'ENG', started_by_name:state.user.name, reason
       }).select('*').single();
@@ -488,13 +483,13 @@
       applyRow(data);
     }
     async function handleDoStartFD(){
-      const type=document.getElementById('fdStartType').value;
-      const reason=(document.getElementById('fdReason').value.trim()||null);
-      document.getElementById('fdReason').value=''; document.getElementById('dlgStartFD').close();
+      const type=$('fdStartType').value;
+      const reason=($('fdReason').value.trim()||null);
+      $('fdReason').value=''; $('dlgStartFD').close();
       if(type==='bypass'){
-        const panelBy = document.getElementById('fdPanelBy').value.trim();
+        const panelBy = $('fdPanelBy').value.trim();
         if(!requireName(panelBy)) return alert('Enter who put the panel on fire watch.');
-        document.getElementById('fdPanelBy').value='';
+        $('fdPanelBy').value='';
         const { data, error } = await sb.from('fire_watches').insert({
           status:'ACTIVE', started_by_role:'FD', started_by_name:state.user.name, reason,
           bypass_used:true, panel_by_name:panelBy, fd_ack:true, fd_ack_by_name:state.user.name, fd_ack_at:new Date().toISOString()
@@ -511,10 +506,10 @@
         applyRow(data);
       }
     }
-    function handleAckOpen(){ if(!state.user) return alert('Sign in first.'); document.getElementById('dlgAck').showModal(); }
+    function handleAckOpen(){ if(!state.user) return alert('Sign in first.'); safeShow('dlgAck'); }
     async function handleDoAck(){
-      const n=document.getElementById('ackName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
-      document.getElementById('ackName').value=''; document.getElementById('dlgAck').close(); if(!state.current) return;
+      const n=$('ackName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
+      $('ackName').value=''; $('dlgAck').close(); if(!state.current) return;
       const { error } = await sb.from('fire_watches').update({
         status:'ACTIVE', fd_ack:true, fd_ack_by_name:n, fd_ack_at:new Date().toISOString()
       }).eq('id', state.current.id);
@@ -531,12 +526,11 @@
       if(error){ console.error(error); alert('Cancel failed'); return; }
       logEvent('cancel_request', `by=${state.user?.role}/${state.user?.name}`);
     }
-    function handleEndOpen(){ if(!state.user) return alert('Sign in first.'); document.getElementById('dlgEnd').showModal(); }
+    function handleEndOpen(){ if(!state.user) return alert('Sign in first.'); safeShow('dlgEnd'); }
     async function handleDoEnd(){
-      const n=document.getElementById('endName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
-      const notes=document.getElementById('endNotes').value.trim();
-      document.getElementById('endName').value=''; document.getElementById('endNotes').value='';
-      document.getElementById('dlgEnd').close(); if(!state.current) return;
+      const n=$('endName').value.trim(); if(!requireName(n)) return alert('Enter your name.');
+      const notes=$('endNotes').value.trim();
+      $('endName').value=''; $('endNotes').value=''; $('dlgEnd').close(); if(!state.current) return;
       const { error } = await sb.from('fire_watches').update({
         status:'ENDED', ended_at:new Date().toISOString(), ended_by_role:state.user.role, ended_by_name:n, notes:notes||null
       }).eq('id', state.current.id);
@@ -544,24 +538,67 @@
       logEvent('end_fire_watch', notes?`notes=${notes}`:'');
     }
 
-    // expose
-    window.handleLoginOpen=handleLoginOpen; window.handleLogout=handleLogout; window.handleDoLogin=handleDoLogin;
-    window.handleStart=handleStart; window.handleFDTypeChange=handleFDTypeChange; window.handleDoStartEng=handleDoStartEng;
-    window.handleDoStartFD=handleDoStartFD; window.handleAckOpen=handleAckOpen; window.handleDoAck=handleDoAck;
-    window.handleCancel=handleCancel; window.handleEndOpen=handleEndOpen; window.handleDoEnd=handleDoEnd;
-    window.openHistory=openHistory; window.loadHistory=loadHistory; window.exportHistory=exportHistory; window.exportEvents=exportEvents;
+    function sanityCheckIDs(){
+      const ids = [
+        'dlgLogin','dlgStartEng','dlgStartFD','dlgAck','dlgEnd','dlgHistory',
+        'btnLogin','btnLogout','btnStart','btnAcknowledge','btnCancel','btnEnd',
+        'btnOpenHistory',
+        'btnDoLogin','btnDoStartEng','btnDoStartFD','btnDoAck','btnDoEnd',
+        'btnCancelLogin','btnCancelStartEng','btnCancelStartFD','btnCancelAck','btnCancelEnd',
+        'btnHistRefresh','btnHistExport','btnCloseHistory'
+      ];
+      const missing = ids.filter(id => !$(id));
+      if (missing.length) console.warn('Missing elements with these IDs:', missing);
+    }
 
-    // init
-    (async () => {
-      // probe write (helps confirm events table accepts inserts)
-      logEvent('page_open', 'v=2025-10-25-9');
+    document.addEventListener('DOMContentLoaded', () => {
+      // Wire buttons after DOM is ready
+      $('btnLogin').onclick = handleLoginOpen;
+      $('btnLogout').onclick = handleLogout;
+      $('btnStart').onclick = handleStart;
+      $('btnAcknowledge').onclick = handleAckOpen;
+      $('btnCancel').onclick = handleCancel;
+      $('btnEnd').onclick = handleEndOpen;
+      $('btnOpenHistory').onclick = openHistory;
 
-      const row = await fetchCurrent(); applyRow(row);
-      await fetchEvents();
-      subscribeRealtime();
-      subscribeEvents();
-      setInterval(fetchEvents, 5000); // polling safety net
-    })();
+      $('btnDoLogin').onclick = handleDoLogin;
+      $('btnCancelLogin').onclick = () => $('dlgLogin').close();
+
+      $('btnDoStartEng').onclick = handleDoStartEng;
+      $('btnCancelStartEng').onclick = () => $('dlgStartEng').close();
+
+      $('fdStartType').onchange = handleFDTypeChange;
+      $('btnDoStartFD').onclick = handleDoStartFD;
+      $('btnCancelStartFD').onclick = () => $('dlgStartFD').close();
+
+      $('btnDoAck').onclick = handleDoAck;
+      $('btnCancelAck').onclick = () => $('dlgAck').close();
+
+      $('btnDoEnd').onclick = handleDoEnd;
+      $('btnCancelEnd').onclick = () => $('dlgEnd').close();
+
+      $('btnHistRefresh').onclick = loadHistory;
+      $('btnHistExport').onclick = exportHistory;
+      $('btnCloseHistory').onclick = () => $('dlgHistory').close();
+
+      sanityCheckIDs();
+
+      // Backend connectivity pill
+      (async () => {
+        const { error } = await sb.from('fire_watches').select('id', { head:true, count:'exact' });
+        $('backendPill').textContent = error ? 'Backend: connection error' : 'Backend: connected';
+        if (error) console.error(error);
+      })();
+
+      // Initial data + realtime
+      (async () => {
+        const row = await fetchCurrent(); applyRow(row);
+        await fetchEvents();
+        subscribeRealtime();
+        subscribeEvents();
+        setInterval(fetchEvents, 5000);
+      })();
+    });
   </script>
 </body>
 </html>
